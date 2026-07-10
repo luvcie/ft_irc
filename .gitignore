@@ -1,0 +1,5 @@
+ircserv
+.objects/
+.deps/
+*.o
+*.d
