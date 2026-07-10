@@ -16,7 +16,6 @@ public:
 
 private:
     int         _listen_fd;
-    bool        _stop;      // flipped by the SIGINT handler, checked each loop tick
     int         _port;
     std::string _password;
 
