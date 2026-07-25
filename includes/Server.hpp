@@ -15,12 +15,15 @@ public:
     void run();
 
 private:
+    typedef void (Server::*Handler)(Client&, const Message&);
+
     int         _listen_fd;
     int         _port;
     std::string _password;
 
     std::map<int, Client>          _clients;
     std::map<std::string, Channel> _channels;
+    std::map<std::string, Handler> _handlers;
 
     void acceptClient();
     void recvFromClient(int fd);

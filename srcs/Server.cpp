@@ -124,8 +124,14 @@ void Server::disconnect(int fd) {
 }
 
 void Server::dispatch(Client& client, const Message& msg) {
-    (void)client;
-    (void)msg;
+    if (msg.command.empty())
+        return;
+    std::map<std::string, Handler>::iterator it = _handlers.find(msg.command);
+    if (it == _handlers.end())
+        return;
+    // handler points at one of our own methods, ->* calls the method through the pointer
+    Handler handler = it->second;
+    (this->*handler)(client, msg);
 }
 
 void Server::sendToClient(int fd, const std::string& msg) {
