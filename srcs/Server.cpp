@@ -23,6 +23,7 @@ Server::Server(int port, const std::string& password)
 {
     _handlers["PASS"] = &Server::cmdPass;
     _handlers["NICK"] = &Server::cmdNick;
+    _handlers["USER"] = &Server::cmdUser;
 }
 
 Server::~Server()

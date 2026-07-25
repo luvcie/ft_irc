@@ -56,3 +56,16 @@ void Server::cmdNick(Client& client, const Message& msg) {
     }
     client.nick = nick;
 }
+
+void Server::cmdUser(Client& client, const Message& msg) {
+    if (client.registered) {
+        sendNumeric(client, "462", ":Already registered, can't do it again");
+        return;
+    }
+    // USER comes with 4 params: username, hostname, servername and the real name
+    if (msg.params.size() < 4) {
+        sendNumeric(client, "461", "USER :Not enough parameters");
+        return;
+    }
+    client.user = msg.params[0];
+}
