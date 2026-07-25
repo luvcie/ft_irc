@@ -20,7 +20,9 @@ static void on_sigint(int) {
 
 Server::Server(int port, const std::string& password)
     : _listen_fd(-1), _port(port), _password(password)
-{}
+{
+    _handlers["PASS"] = &Server::cmdPass;
+}
 
 Server::~Server()
 {}
@@ -138,6 +140,12 @@ void Server::sendToClient(int fd, const std::string& msg) {
     std::map<int, Client>::iterator it = _clients.find(fd);
     if (it != _clients.end())
         it->second.send_buf += msg;
+}
+
+void Server::sendNumeric(Client& client, const std::string& code, const std::string& params) {
+    // a client with no nick yet is shown as * in the reply
+    std::string target = client.nick.empty() ? "*" : client.nick;
+    sendToClient(client.fd, ":" SERVER_NAME " " + code + " " + target + " " + params + "\r\n");
 }
 
 // TODO for Pablo: recorre los miembros del canal llamando a sendToClient para cada uno,

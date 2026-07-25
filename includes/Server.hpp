@@ -7,6 +7,8 @@
 #include "Channel.hpp"
 #include "Message.hpp"
 
+#define SERVER_NAME "ircserv"
+
 class Server {
 public:
     Server(int port, const std::string& password);
@@ -32,6 +34,9 @@ private:
     void dispatch(Client& client, const Message& msg);
     void sendToClient(int fd, const std::string& msg);
     void sendToChannel(const std::string& channel, const std::string& msg, int except_fd);
+    void sendNumeric(Client& client, const std::string& code, const std::string& params);
+
+    void cmdPass(Client& client, const Message& msg);
 };
 
 #endif
