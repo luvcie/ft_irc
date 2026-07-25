@@ -39,6 +39,7 @@ private:
     void cmdPass(Client& client, const Message& msg);
     void cmdNick(Client& client, const Message& msg);
     void cmdUser(Client& client, const Message& msg);
+    void tryRegister(Client& client);
 };
 
 #endif

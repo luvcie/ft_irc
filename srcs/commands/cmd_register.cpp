@@ -55,6 +55,7 @@ void Server::cmdNick(Client& client, const Message& msg) {
         }
     }
     client.nick = nick;
+    tryRegister(client);
 }
 
 void Server::cmdUser(Client& client, const Message& msg) {
@@ -68,4 +69,20 @@ void Server::cmdUser(Client& client, const Message& msg) {
         return;
     }
     client.user = msg.params[0];
+    tryRegister(client);
+}
+
+void Server::tryRegister(Client& client) {
+    if (client.registered)
+        return;
+    // need both the nick and the user before registration can finish
+    if (client.nick.empty() || client.user.empty())
+        return;
+    // this is the moment a wrong or missing password gets rejected
+    if (!client.has_pass) {
+        sendNumeric(client, "464", ":Password incorrect");
+        return;
+    }
+    client.registered = true;
+    sendNumeric(client, "001", ":Welcome to the network, " + client.nick);
 }
