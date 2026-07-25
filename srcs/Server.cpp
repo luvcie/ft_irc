@@ -22,6 +22,7 @@ Server::Server(int port, const std::string& password)
     : _listen_fd(-1), _port(port), _password(password)
 {
     _handlers["PASS"] = &Server::cmdPass;
+    _handlers["NICK"] = &Server::cmdNick;
 }
 
 Server::~Server()

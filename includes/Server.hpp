@@ -37,6 +37,7 @@ private:
     void sendNumeric(Client& client, const std::string& code, const std::string& params);
 
     void cmdPass(Client& client, const Message& msg);
+    void cmdNick(Client& client, const Message& msg);
 };
 
 #endif
