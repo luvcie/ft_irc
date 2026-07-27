@@ -10,6 +10,7 @@
 #include <poll.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 
 // signal handlers can't reach members, so the stop flag lives here
 static volatile sig_atomic_t g_stop = 0;
@@ -137,7 +138,12 @@ void Server::acceptClient()
 		close(fd);
 		return;
 	}
-	_clients.insert(std::make_pair(fd, Client(fd)));
+	// keep the client's ip, it goes in the nick!user@host part of their messages
+	char ip[INET_ADDRSTRLEN];
+	inet_ntop(AF_INET, &addr.sin_addr, ip, sizeof(ip));
+	Client client(fd);
+	client.host = ip;
+	_clients.insert(std::make_pair(fd, client));
 }
 
 // TODO for Pablo: un solo recv a un buffer local, 0 o menos significa que el cliente se ha ido (disconnect).

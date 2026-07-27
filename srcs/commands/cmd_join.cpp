@@ -44,6 +44,6 @@ void Server::cmdJoin(Client& client, const Message& msg) {
         chan.operators.insert(client.fd);
 
     // let everyone in the channel know, the one joining included
-    std::string line = ":" + client.nick + "!" + client.user + "@" SERVER_NAME " JOIN " + name + "\r\n";
+    std::string line = ":" + client.nick + "!" + client.user + "@" + client.host + " JOIN " + name + "\r\n";
     sendToChannel(name, line, -1);
 }
