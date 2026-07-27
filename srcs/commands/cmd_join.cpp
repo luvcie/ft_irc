@@ -1,5 +1,9 @@
 #include "Server.hpp"
 
+std::string Server::clientPrefix(const Client& client) {
+    return ":" + client.nick + "!" + client.user + "@" + client.host;
+}
+
 static bool isValidChannelName(const std::string& name) {
     if (name.size() < 2 || name[0] != '#')
         return false;
@@ -44,7 +48,7 @@ void Server::cmdJoin(Client& client, const Message& msg) {
         chan.operators.insert(client.fd);
 
     // let everyone in the channel know, the one joining included
-    std::string line = ":" + client.nick + "!" + client.user + "@" + client.host + " JOIN " + name + "\r\n";
+    std::string line = clientPrefix(client) + " JOIN " + name + "\r\n";
     sendToChannel(name, line, -1);
 
     // send the topic to the user who just joined, or say there isn't one yet
@@ -87,7 +91,7 @@ void Server::cmdPart(Client& client, const Message& msg) {
         return;
     }
 
-    std::string line = ":" + client.nick + "!" + client.user + "@" + client.host + " PART " + name;
+    std::string line = clientPrefix(client) + " PART " + name;
     if (msg.params.size() > 1)
         line += " :" + msg.params[1];
     line += "\r\n";
