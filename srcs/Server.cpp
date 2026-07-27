@@ -169,13 +169,22 @@ void Server::recvFromClient(int fd)
 // TODO for Pablo: un send con lo que haya, y quita de send_buf solo lo que el kernel haya aceptado
 void Server::flushClient(int fd)
 {
-	(void)fd;
+	std::map<int, Client>::iterator it = _clients.find(fd);
+	if (it == _clients.end())
+		return;
+	Client &client = it->second;
+	if (client.send_buf.empty())
+		return;
+	int n = send(fd, client.send_buf.c_str(), client.send_buf.size(), 0);
+	if (n > 0)
+		client.send_buf.erase(0, n);
 }
 
 // TODO for Pablo: cierra el fd y borra el cliente de _clients
 void Server::disconnect(int fd)
 {
-	(void)fd;
+	close(fd);
+	_clients.erase(fd);
 }
 
 void Server::dispatch(Client &client, const Message &msg)
