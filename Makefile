@@ -12,7 +12,8 @@ SRCS        = main.cpp \
               Client.cpp \
               Channel.cpp \
               Message.cpp \
-              commands/cmd_register.cpp
+              commands/cmd_register.cpp \
+              commands/cmd_join.cpp
 
 OBJS        = $(SRCS:%.cpp=$(OBJDIR)/%.o)
 DEPS        = $(SRCS:%.cpp=$(DEPDIR)/%.d)

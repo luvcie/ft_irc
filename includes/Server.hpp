@@ -40,6 +40,7 @@ private:
     void cmdNick(Client& client, const Message& msg);
     void cmdUser(Client& client, const Message& msg);
     void cmdPing(Client& client, const Message& msg);
+    void cmdJoin(Client& client, const Message& msg);
     void tryRegister(Client& client);
 };
 
