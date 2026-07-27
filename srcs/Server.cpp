@@ -108,7 +108,21 @@ void Server::run() {
 
 // TODO for Pablo: acepta la conexión, ponla en no bloqueante con fcntl y mete el Client en _clients
 void Server::acceptClient()
-{}
+{
+	sockaddr_in addr;
+	socklen_t addrlen = sizeof(addr);
+	int fd = accept(_listen_fd, (sockaddr*)&addr, &addrlen);
+	if (fd < 0) {
+		std::cerr << "Error: accept failed" << std::endl;
+		return;
+	}
+	if (fcntl(fd, F_SETFL, O_NONBLOCK) < 0) {
+		std::cerr << "Error: fcntl failed" << std::endl;
+		close(fd);
+		return;
+	}
+	_clients.insert(std::make_pair(fd, Client(fd)));
+}
 
 // TODO for Pablo: un solo recv a un buffer local, 0 o menos significa que el cliente se ha ido (disconnect).
 // Si no, añade a recv_buf y ve sacando las líneas completas, valen tanto \r\n como \n a secas.
