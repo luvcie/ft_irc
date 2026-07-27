@@ -86,3 +86,12 @@ void Server::tryRegister(Client& client) {
     client.registered = true;
     sendNumeric(client, "001", ":Welcome to the network, " + client.nick);
 }
+
+void Server::cmdPing(Client& client, const Message& msg) {
+    if (msg.params.empty()) {
+        sendNumeric(client, "409", ":No origin specified");
+        return;
+    }
+    // reply PONG but keep the same value client sent with msg.params[0], so client knows it answers their ping
+    sendToClient(client.fd, ":" SERVER_NAME " PONG " SERVER_NAME " :" + msg.params[0] + "\r\n");
+}
