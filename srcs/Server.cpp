@@ -29,6 +29,7 @@ Server::Server(int port, const std::string &password)
 	_handlers["PING"] = &Server::cmdPing;
 	_handlers["JOIN"] = &Server::cmdJoin;
 	_handlers["PART"] = &Server::cmdPart;
+	_handlers["PRIVMSG"] = &Server::cmdPrivmsg;
 }
 
 Server::~Server()

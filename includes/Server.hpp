@@ -43,6 +43,7 @@ private:
     void cmdPing(Client& client, const Message& msg);
     void cmdJoin(Client& client, const Message& msg);
     void cmdPart(Client& client, const Message& msg);
+    void cmdPrivmsg(Client& client, const Message& msg);
     void tryRegister(Client& client);
 };
 
