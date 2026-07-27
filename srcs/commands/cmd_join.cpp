@@ -65,3 +65,41 @@ void Server::cmdJoin(Client& client, const Message& msg) {
     sendNumeric(client, "353", "= " + name + " :" + names);
     sendNumeric(client, "366", name + " :End of /NAMES list");
 }
+
+void Server::cmdPart(Client& client, const Message& msg) {
+    if (!client.registered) {
+        sendNumeric(client, "451", ":You have not registered");
+        return;
+    }
+    if (msg.params.empty()) {
+        sendNumeric(client, "461", "PART :Not enough parameters");
+        return;
+    }
+    const std::string& name = msg.params[0];
+    std::map<std::string, Channel>::iterator it = _channels.find(name);
+    if (it == _channels.end()) {
+        sendNumeric(client, "403", name + " :No such channel");
+        return;
+    }
+    Channel& chan = it->second;
+    if (!chan.members.count(client.fd)) {
+        sendNumeric(client, "442", name + " :You're not on that channel");
+        return;
+    }
+
+    std::string line = ":" + client.nick + "!" + client.user + "@" + client.host + " PART " + name;
+    if (msg.params.size() > 1)
+        line += " :" + msg.params[1];
+    line += "\r\n";
+    // send it before taking them out of the channel, so the one leaving gets it too
+    sendToChannel(name, line, -1);
+
+    chan.members.erase(client.fd);
+    chan.operators.erase(client.fd);
+    chan.invited.erase(client.fd);
+    client.channels.erase(name);
+    // a channel with nobody left in it just disappears
+    if (chan.members.empty())
+        _channels.erase(it);
+}
+
