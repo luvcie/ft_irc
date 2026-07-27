@@ -217,7 +217,13 @@ void Server::sendNumeric(Client &client, const std::string &code, const std::str
 // saltándote except_fd (el que envía)
 void Server::sendToChannel(const std::string &channel, const std::string &msg, int except_fd)
 {
-	(void)channel;
-	(void)msg;
-	(void)except_fd;
+	std::map<std::string, Channel>::iterator it = _channels.find(channel);
+	if (it == _channels.end())
+		return;
+	Channel &chan = it->second;
+	for (std::set<int>::iterator mem_it = chan.members.begin(); mem_it != chan.members.end(); ++mem_it)
+	{
+		if (*mem_it != except_fd)
+			sendToClient(*mem_it, msg);
+	}
 }
