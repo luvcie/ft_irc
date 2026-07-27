@@ -46,4 +46,22 @@ void Server::cmdJoin(Client& client, const Message& msg) {
     // let everyone in the channel know, the one joining included
     std::string line = ":" + client.nick + "!" + client.user + "@" + client.host + " JOIN " + name + "\r\n";
     sendToChannel(name, line, -1);
+
+    // send the topic to the user who just joined, or say there isn't one yet
+    if (chan.topic.empty())
+        sendNumeric(client, "331", name + " :No topic is set");
+    else
+        sendNumeric(client, "332", name + " :" + chan.topic);
+
+    // and the list of the users who are already in the channel, operators marked with a @
+    std::string names;
+    for (std::set<int>::iterator it = chan.members.begin(); it != chan.members.end(); ++it) {
+        if (!names.empty())
+            names += " ";
+        if (chan.operators.count(*it))
+            names += "@";
+        names += _clients.find(*it)->second.nick;
+    }
+    sendNumeric(client, "353", "= " + name + " :" + names);
+    sendNumeric(client, "366", name + " :End of /NAMES list");
 }
