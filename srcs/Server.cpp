@@ -238,3 +238,13 @@ void Server::sendToChannel(const std::string &channel, const std::string &msg, i
 			sendToClient(*mem_it, msg);
 	}
 }
+
+Client* Server::findClientByNick(const std::string& nick)
+{
+	for (std::map<int, Client>::iterator it = _clients.begin(); it != _clients.end(); ++it)
+	{
+		if (it->second.nick == nick)
+			return &(it->second);
+	}
+	return NULL;
+}

@@ -36,6 +36,7 @@ private:
     void sendToChannel(const std::string& channel, const std::string& msg, int except_fd);
     void sendNumeric(Client& client, const std::string& code, const std::string& params);
     std::string clientPrefix(const Client& client);
+	Client* findClientByNick(const std::string& nick);
 
     void cmdPass(Client& client, const Message& msg);
     void cmdNick(Client& client, const Message& msg);
