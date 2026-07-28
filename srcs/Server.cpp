@@ -31,6 +31,7 @@ Server::Server(int port, const std::string &password)
 	_handlers["PART"] = &Server::cmdPart;
 	_handlers["PRIVMSG"] = &Server::cmdPrivmsg;
 	_handlers["TOPIC"] = &Server::cmdTopic;
+	_handlers["KICK"] = &Server::cmdKick;
 }
 
 Server::~Server()
