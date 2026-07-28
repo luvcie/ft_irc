@@ -45,6 +45,7 @@ private:
     void cmdPart(Client& client, const Message& msg);
     void cmdPrivmsg(Client& client, const Message& msg);
     void tryRegister(Client& client);
+	void cmdTopic(Client& client, const Message& msg);
 };
 
 #endif
