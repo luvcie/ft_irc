@@ -176,6 +176,10 @@ void Server::recvFromClient(int fd)
 		if (!line.empty() && line[line.size() - 1] == '\r')
 			line.erase(line.size() - 1);
 		dispatch(client, parse(line));
+		// stop before using it again because a command like quit can disconnect the
+		// client during the loop, and then the client reference would be dead
+		if (_clients.find(fd) == _clients.end())
+			return;
 	}
 }
 
