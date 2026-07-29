@@ -12,7 +12,7 @@ void Server::cmdTopic(Client &client, const Message &msg)
 		sendNumeric(client, "461", "TOPIC :Not enough parameters");
 		return;
 	}
-	const std::string &name = msg.params[0];
+	std::string name = ircLower(msg.params[0]);
 	std::map<std::string, Channel>::iterator it = _channels.find(name);
 	if (it == _channels.end())
 	{
@@ -57,7 +57,7 @@ void Server::cmdKick(Client &client, const Message &msg)
 		sendNumeric(client, "461", "KICK :Not enough parameters");
 		return;
 	}
-	const std::string &name = msg.params[0];
+	std::string name = ircLower(msg.params[0]);
 	std::map<std::string, Channel>::iterator it = _channels.find(name);
 	if (it == _channels.end())
 	{

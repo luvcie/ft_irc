@@ -46,7 +46,7 @@ void Server::cmdPass(Client& client, const Message& msg) {
         sendNumeric(client, "461", "PASS :Not enough parameters");
         return;
     }
-    // registration checks this at the end, here we only remember if it matched
+    // registration checks this at the end, this line only records whether it matched
     client.has_pass = (msg.params[0] == _password);
 }
 
