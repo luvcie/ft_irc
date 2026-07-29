@@ -42,9 +42,24 @@ void Server::cmdJoin(Client& client, const Message& msg) {
     Channel& chan = it->second;
     if (chan.members.count(client.fd))
         return;
-
+    if (chan.invite_only && !chan.invited.count(client.fd))
+    {
+        sendNumeric(client, "473", name + " :Cannot join channel (+i)");
+        return;
+    }
+    if (!chan.key.empty() && (msg.params.size() < 2 || msg.params[1] != chan.key))
+    {
+        sendNumeric(client, "475", name + " :Cannot join channel (+k)");
+        return;
+    }
+    if (chan.user_limit > 0 && chan.members.size() >= chan.user_limit)
+    {
+        sendNumeric(client, "471", name + " :Cannot join channel (+l)");
+        return;
+    }
     chan.members.insert(client.fd);
     client.channels.insert(name);
+    chan.invited.erase(client.fd);
     // whoever creates the channel gets to run it
     if (created)
         chan.operators.insert(client.fd);
