@@ -30,6 +30,8 @@ Server::Server(int port, const std::string &password)
 	_handlers["JOIN"] = &Server::cmdJoin;
 	_handlers["PART"] = &Server::cmdPart;
 	_handlers["PRIVMSG"] = &Server::cmdPrivmsg;
+	_handlers["NOTICE"] = &Server::cmdNotice;
+	_handlers["QUIT"] = &Server::cmdQuit;
 	_handlers["TOPIC"] = &Server::cmdTopic;
 	_handlers["KICK"] = &Server::cmdKick;
 	_handlers["MODE"] = &Server::cmdMode;
@@ -176,6 +178,10 @@ void Server::recvFromClient(int fd)
 		if (!line.empty() && line[line.size() - 1] == '\r')
 			line.erase(line.size() - 1);
 		dispatch(client, parse(line));
+		// stop before using it again because a command like quit can disconnect the
+		// client during the loop, and then the client reference would be dead
+		if (_clients.find(fd) == _clients.end())
+			return;
 	}
 }
 
@@ -243,9 +249,10 @@ void Server::sendToChannel(const std::string &channel, const std::string &msg, i
 
 Client* Server::findClientByNick(const std::string& nick)
 {
+	std::string want = ircLower(nick);
 	for (std::map<int, Client>::iterator it = _clients.begin(); it != _clients.end(); ++it)
 	{
-		if (it->second.nick == nick)
+		if (ircLower(it->second.nick) == want)
 			return &(it->second);
 	}
 	return NULL;
