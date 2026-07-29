@@ -34,7 +34,8 @@ void Server::cmdMode(Client &client, const Message &msg)
     return;
   }
 
-  const std::string &name = msg.params[0];
+  // lowercase like every other channel command, so MODE #Test finds #test
+  std::string name = ircLower(msg.params[0]);
 
   // only channel modes are implemented, user modes are out of the subject
   if (name.empty() || name[0] != '#')
