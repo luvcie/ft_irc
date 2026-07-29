@@ -17,10 +17,23 @@ static bool isValidNick(const std::string& nick) {
     return true;
 }
 
-static std::string toLower(const std::string& s) {
+// irc compares nicks without caring about case, and on top of a-z it also treats
+// []\~ as the same as {}|^ (a leftover from irc being scandinavian, rfc 2812 section 2.2)
+std::string ircLower(const std::string& s) {
     std::string out = s;
-    for (size_t i = 0; i < out.size(); ++i)
-        out[i] = std::tolower((unsigned char)out[i]);
+    for (size_t i = 0; i < out.size(); ++i) {
+        char c = out[i];
+        if (c >= 'A' && c <= 'Z')
+            out[i] = c + 32;
+        else if (c == '[')
+            out[i] = '{';
+        else if (c == ']')
+            out[i] = '}';
+        else if (c == '\\')
+            out[i] = '|';
+        else if (c == '~')
+            out[i] = '^';
+    }
     return out;
 }
 
@@ -49,7 +62,7 @@ void Server::cmdNick(Client& client, const Message& msg) {
     }
     // two people can't share the same nickname, example: Luvcie and luvcie are seen as the same
     for (std::map<int, Client>::iterator it = _clients.begin(); it != _clients.end(); ++it) {
-        if (it->first != client.fd && toLower(it->second.nick) == toLower(nick)) {
+        if (it->first != client.fd && ircLower(it->second.nick) == ircLower(nick)) {
             sendNumeric(client, "433", nick + " :Nickname is already in use");
             return;
         }

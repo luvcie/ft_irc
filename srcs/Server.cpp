@@ -242,9 +242,10 @@ void Server::sendToChannel(const std::string &channel, const std::string &msg, i
 
 Client* Server::findClientByNick(const std::string& nick)
 {
+	std::string want = ircLower(nick);
 	for (std::map<int, Client>::iterator it = _clients.begin(); it != _clients.end(); ++it)
 	{
-		if (it->second.nick == nick)
+		if (ircLower(it->second.nick) == want)
 			return &(it->second);
 	}
 	return NULL;

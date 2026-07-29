@@ -9,6 +9,8 @@
 
 #define SERVER_NAME "ircserv"
 
+std::string ircLower(const std::string& s);
+
 class Server {
 public:
     Server(int port, const std::string& password);
