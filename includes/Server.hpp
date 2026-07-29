@@ -48,6 +48,7 @@ private:
     void cmdPart(Client& client, const Message& msg);
     void cmdPrivmsg(Client& client, const Message& msg);
     void cmdNotice(Client& client, const Message& msg);
+    void cmdQuit(Client& client, const Message& msg);
     void deliverMessage(Client& client, const Message& msg, const std::string& command, bool notice);
     void tryRegister(Client& client);
 	void cmdTopic(Client& client, const Message& msg);
