@@ -22,23 +22,24 @@ void Server::deliverMessage(Client& client, const Message& msg, const std::strin
 
     const std::string& target = msg.params[0];
     const std::string& text = msg.params[1];
-    std::string line = clientPrefix(client) + " " + command + " " + target + " :" + text + "\r\n";
 
     // a target starting with # is a channel, anything else is a nickname
     if (!target.empty() && target[0] == '#') {
-        std::map<std::string, Channel>::iterator it = _channels.find(target);
+        std::string name = ircLower(target);
+        std::map<std::string, Channel>::iterator it = _channels.find(name);
         if (it == _channels.end()) {
             if (!notice)
-                sendNumeric(client, "403", target + " :No such channel");
+                sendNumeric(client, "403", name + " :No such channel");
             return;
         }
         if (!it->second.members.count(client.fd)) {
             if (!notice)
-                sendNumeric(client, "404", target + " :Cannot send to channel");
+                sendNumeric(client, "404", name + " :Cannot send to channel");
             return;
         }
+        std::string line = clientPrefix(client) + " " + command + " " + name + " :" + text + "\r\n";
         // to everyone in the channel but the one who sent it
-        sendToChannel(target, line, client.fd);
+        sendToChannel(name, line, client.fd);
     } else {
         Client* dest = findClientByNick(target);
         if (!dest) {
@@ -46,6 +47,7 @@ void Server::deliverMessage(Client& client, const Message& msg, const std::strin
                 sendNumeric(client, "401", target + " :No such nick");
             return;
         }
+        std::string line = clientPrefix(client) + " " + command + " " + target + " :" + text + "\r\n";
         sendToClient(dest->fd, line);
     }
 }

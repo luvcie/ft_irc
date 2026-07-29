@@ -24,7 +24,9 @@ void Server::cmdJoin(Client& client, const Message& msg) {
         sendNumeric(client, "461", "JOIN :Not enough parameters");
         return;
     }
-    const std::string& name = msg.params[0];
+    // channel names are case-insensitive too (same rfc rule as nicks), so lowercase the
+    // name and use that everywhere, that way #Test and #test end up as one channel
+    std::string name = ircLower(msg.params[0]);
     if (!isValidChannelName(name)) {
         sendNumeric(client, "403", name + " :No such channel");
         return;
@@ -79,7 +81,7 @@ void Server::cmdPart(Client& client, const Message& msg) {
         sendNumeric(client, "461", "PART :Not enough parameters");
         return;
     }
-    const std::string& name = msg.params[0];
+    std::string name = ircLower(msg.params[0]);
     std::map<std::string, Channel>::iterator it = _channels.find(name);
     if (it == _channels.end()) {
         sendNumeric(client, "403", name + " :No such channel");
