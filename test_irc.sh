@@ -466,9 +466,59 @@ escenario_invite() {
 	stop_server
 }
 
-# ================================================= 10. DESCONEXION ABRUPTA
+# ========================================================= 10. CAMBIO DE NICK
+escenario_cambio_nick() {
+	title "10. CAMBIO DE NICK  (estando ya registrado)"
+	start_server; open_clients 3
+
+	register 1 alice alu
+	register 2 bob bou
+	register 3 carol cau
+	s1 "JOIN #uno"; s2 "JOIN #uno"
+	s1 "JOIN #dos"; s2 "JOIN #dos"
+
+	s1 "NICK alicia"
+	# el prefijo lleva el nick VIEJO: es como los demas saben a quien renombrar
+	check 2 ":alice!alu@127.0.0.1 NICK :alicia" "el canal recibe el cambio con el prefijo VIEJO"
+	check 1 ":alice!alu@127.0.0.1 NICK :alicia" "el propio cliente recibe su confirmacion"
+	nocheck 3 "NICK :alicia" "quien no comparte canal NO se entera"
+
+	# bob comparte dos canales y aun asi debe recibirlo una sola vez
+	if [ "$(grep -c 'NICK :alicia' "$DIR/out2")" -eq 1 ]; then
+		pass_t "quien comparte dos canales lo recibe una sola vez"
+	else
+		fail_t "quien comparte dos canales lo recibe una sola vez" "exactamente 1 linea NICK"
+	fi
+
+	# el nick nuevo funciona y el viejo ya no
+	s2 "PRIVMSG alicia :con el nick nuevo"
+	check 1 "PRIVMSG alicia :con el nick nuevo" "el nick nuevo recibe mensajes"
+	s2 "PRIVMSG alice :con el viejo"
+	check 2 "401 bob alice" "el nick viejo ya no existe -> 401"
+
+	# sigue siendo operadora: los canales guardan fds, no nicks
+	s1 "MODE #uno +t"
+	check 2 ":alicia!alu@127.0.0.1 MODE #uno +t" "sigue siendo operadora tras cambiar de nick"
+
+	# casos que no deben difundir nada
+	: > "$DIR/out2"
+	s1 "NICK alicia"
+	nocheck 2 "NICK :alicia" "pedir el nick que ya tienes no difunde nada"
+	s1 "NICK bob"
+	check 1 "433 alicia bob" "cambiar a un nick ocupado -> 433"
+	s1 "NICK ali:cia"
+	check 1 "432" "cambiar a un nick invalido -> 432"
+
+	# cambiar solo de mayusculas SI es un cambio real
+	s1 "NICK ALICIA"
+	check 2 ":alicia!alu@127.0.0.1 NICK :ALICIA" "cambiar solo la caja si se difunde"
+
+	stop_server
+}
+
+# ================================================= 11. DESCONEXION ABRUPTA
 escenario_desconexion() {
-	title "10. DESCONEXION ABRUPTA  (sin QUIT)"
+	title "11. DESCONEXION ABRUPTA  (sin QUIT)"
 	start_server; open_clients 3
 
 	register 1 alice alu
@@ -502,9 +552,9 @@ escenario_desconexion() {
 	stop_server
 }
 
-# ============================================= 11. LO QUE FALTA (informativo)
+# ============================================= 12. LO QUE FALTA (informativo)
 escenario_pendientes() {
-	title "11. PENDIENTE  (lo pide el subject y aun no esta)"
+	title "12. PENDIENTE  (lo pide el subject y aun no esta)"
 	start_server; open_clients 2
 
 	register 1 alice alu
@@ -556,6 +606,7 @@ escenario_mode
 escenario_quit
 escenario_robustez
 escenario_invite
+escenario_cambio_nick
 escenario_desconexion
 escenario_pendientes
 

@@ -76,6 +76,30 @@ void Server::cmdNick(Client& client, const Message& msg) {
             return;
         }
     }
+    // asking for the nick you already have is a no-op, but changing only the case is
+    // a real change and does get announced
+    if (client.nick == nick)
+        return;
+    // somebody already registered is known to other people, so the change has to be
+    // announced to every channel they are in, plus to themselves as a confirmation.
+    // the prefix carries the OLD nick, that is how the others know who to rename, so
+    // the line has to be built before the assignment below
+    if (client.registered) {
+        std::string line = clientPrefix(client) + " NICK :" + nick + "\r\n";
+        std::set<int> told;
+        told.insert(client.fd);
+        sendToClient(client.fd, line);
+        for (std::set<std::string>::iterator ch = client.channels.begin(); ch != client.channels.end(); ++ch) {
+            std::map<std::string, Channel>::iterator it = _channels.find(*ch);
+            if (it == _channels.end())
+                continue;
+            std::set<int>& members = it->second.members;
+            for (std::set<int>::iterator m = members.begin(); m != members.end(); ++m) {
+                if (told.insert(*m).second)
+                    sendToClient(*m, line);
+            }
+        }
+    }
     client.nick = nick;
     tryRegister(client);
 }
