@@ -381,8 +381,8 @@ escenario_quit() {
 
 # ================================================================ 8. ROBUSTEZ
 escenario_robustez() {
-	title "8. ROBUSTEZ  (datos partidos, lineas raras)"
-	start_server; open_clients 1
+	title "8. ROBUSTEZ  (datos partidos, lineas raras, inundacion)"
+	start_server; open_clients 2
 
 	register 1 alice alu
 	s1 "JOIN #sala"
@@ -407,13 +407,35 @@ escenario_robustez() {
 	sleep 0.3
 	check 1 "324" "lineas vacias y \\n suelto no rompen nada"
 
-	# comando larguisimo
+	# comando larguisimo pero valido: tiene que funcionar, no cortarse
 	s1 "TOPIC #sala :$(head -c 400 < /dev/zero | tr '\0' 'x')"
+	s1 "TOPIC #sala"
+	check 1 "332 alice #sala :xxxx" "un topic de 400 caracteres se acepta entero"
+
+	# ------ inundacion sin un solo \n: recv_buf no puede crecer sin limite ------
+	# se hace lo ultimo del bloque porque al cliente 1 se le cierra la conexion
+	rss_antes=$(awk '/VmRSS/ {print $2}' /proc/"$SRV_PID"/status 2>/dev/null)
+	head -c 2000000 < /dev/zero | tr '\0' 'x' >&3 2>/dev/null
+	sleep 0.8
+	rss_despues=$(awk '/VmRSS/ {print $2}' /proc/"$SRV_PID"/status 2>/dev/null)
+
 	if kill -0 "$SRV_PID" 2>/dev/null; then
-		pass_t "un topic de 400 caracteres no tumba el servidor"
+		pass_t "2 MB sin ningun \\n no tumban el servidor"
 	else
-		fail_t "un topic de 400 caracteres no tumba el servidor" "proceso vivo"
+		fail_t "2 MB sin ningun \\n no tumban el servidor" "proceso vivo"
 	fi
+	# sin el tope, recv_buf habria crecido los 2 MB enteros
+	if [ -n "$rss_antes" ] && [ -n "$rss_despues" ] && [ $((rss_despues - rss_antes)) -lt 1024 ]; then
+		pass_t "la memoria no crece con la inundacion (${rss_antes} -> ${rss_despues} kB)"
+	else
+		fail_t "la memoria no crece con la inundacion" "menos de 1 MB de crecimiento (${rss_antes} -> ${rss_despues} kB)"
+	fi
+
+	# y el servidor sigue atendiendo a clientes nuevos
+	s2 "PASS $PASSWORD"
+	s2 "NICK nuevo"
+	s2 "USER nu 0 * :Nuevo"
+	check 2 "001 nuevo" "sigue aceptando clientes despues de la inundacion"
 
 	stop_server
 }

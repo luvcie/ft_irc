@@ -15,6 +15,11 @@
 // signal handlers can't reach members, so the stop flag lives here
 static volatile sig_atomic_t g_stop = 0;
 
+// the protocol caps a line at 512 bytes, this leaves plenty of room on top of it.
+// what it stops is a client that sends forever without ever closing a line, which
+// would grow recv_buf until the machine runs out of memory
+static const std::string::size_type MAX_PENDING_LINE = 4096;
+
 static void on_sigint(int)
 {
 	g_stop = 1;
@@ -185,6 +190,10 @@ void Server::recvFromClient(int fd)
 		if (_clients.find(fd) == _clients.end())
 			return;
 	}
+	// whatever is left over is an unfinished line. past this size it is not a slow
+	// client, it is one that will never send a newline, so the connection goes
+	if (client.recv_buf.size() > MAX_PENDING_LINE)
+		disconnect(fd, "Input line too long");
 }
 
 // TODO for Pablo: un send con lo que haya, y quita de send_buf solo lo que el kernel haya aceptado
