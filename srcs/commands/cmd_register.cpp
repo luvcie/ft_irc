@@ -37,6 +37,15 @@ std::string ircLower(const std::string& s) {
     return out;
 }
 
+// real clients open with CAP LS to negotiate ircv3 extensions before registering.
+// we support none, so we answer with an empty list and they carry on. without this
+// handler the command would reach the 421 above and show as an error in the client
+void Server::cmdCap(Client &client, const Message &msg)
+{
+	if (!msg.params.empty() && msg.params[0] == "LS")
+		sendToClient(client.fd, ":" SERVER_NAME " CAP * LS :\r\n");
+}
+
 void Server::cmdPass(Client& client, const Message& msg) {
     if (client.registered) {
         sendNumeric(client, "462", ":Already registered, can't do it again");

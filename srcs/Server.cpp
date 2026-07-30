@@ -35,6 +35,7 @@ Server::Server(int port, const std::string &password)
 	_handlers["TOPIC"] = &Server::cmdTopic;
 	_handlers["KICK"] = &Server::cmdKick;
 	_handlers["MODE"] = &Server::cmdMode;
+	_handlers["CAP"] = &Server::cmdCap;
 }
 
 Server::~Server()
@@ -212,7 +213,10 @@ void Server::dispatch(Client &client, const Message &msg)
 		return;
 	std::map<std::string, Handler>::iterator it = _handlers.find(msg.command);
 	if (it == _handlers.end())
+	{
+		sendNumeric(client, "421", msg.command + " :Unknown command");
 		return;
+	}
 	// handler points at one of our own methods, ->* calls the method through the pointer
 	Handler handler = it->second;
 	(this->*handler)(client, msg);

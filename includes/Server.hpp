@@ -54,6 +54,7 @@ private:
 	void cmdTopic(Client& client, const Message& msg);
 	void cmdKick(Client& client, const Message& msg);
 	void cmdMode(Client& client, const Message& msg);
+	void cmdCap(Client& client, const Message& msg);
 };
 
 #endif
