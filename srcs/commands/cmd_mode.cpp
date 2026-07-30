@@ -58,7 +58,8 @@ void Server::cmdMode(Client &client, const Message &msg)
     return;
   }
 
-  // a query needs no operator privilege, so it comes before the 482 check
+  // info request: MODE #chan with no second parameter shows the current modes and their values
+  // a query needs no operator privilege, so it comes before the 482 check ex: MODE #chantest
   if (msg.params.size() == 1)
   {
     std::string modes = "+";
@@ -91,11 +92,11 @@ void Server::cmdMode(Client &client, const Message &msg)
     return;
   }
 
-  const std::string &modestring = msg.params[1];
-  bool adding = true;              // the current sign, survives the whole loop
-  size_t param_index = 2;          // cursor over the queue of parameters
+  const std::string &modestring = msg.params[1]; // "+ot" -> example
+  bool adding = true;
+  size_t param_index = 2;
   std::string applied_modes = "";  // fills up as "+o-t"
-  std::string applied_params = ""; // fills up as " victima"
+  std::string applied_params = ""; // fills up as " victim" or " key" or " 10"
 
   for (size_t i = 0; i < modestring.size(); ++i)
   {

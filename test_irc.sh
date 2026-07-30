@@ -410,9 +410,57 @@ escenario_robustez() {
 	stop_server
 }
 
-# ============================================== 9. LO QUE FALTA (informativo)
+# =================================================================== 9. INVITE
+escenario_invite() {
+	title "9. INVITE"
+	start_server; open_clients 3
+
+	register 1 alice alu
+	register 2 bob bou
+	register 3 carol cau
+	s1 "JOIN #sala"
+	s3 "JOIN #sala"
+
+	s1 "INVITE bob"
+	check 1 "461" "INVITE con un solo parametro -> 461"
+	s1 "INVITE bob #nada"
+	check 1 "403 alice #nada" "INVITE a un canal inexistente -> 403"
+	s2 "INVITE carol #sala"
+	check 2 "442 bob #sala" "invitar sin estar en el canal -> 442"
+	s1 "INVITE fantasma #sala"
+	check 1 "401 alice fantasma" "INVITE a un nick inexistente -> 401"
+	s1 "INVITE carol #sala"
+	check 1 "443 alice carol #sala" "invitar a alguien que ya esta dentro -> 443"
+
+	# canal abierto: cualquier miembro puede invitar, no hace falta ser operador
+	s3 "INVITE bob #sala"
+	check 3 "341 carol bob #sala" "sin +i un no-operador puede invitar -> 341"
+	check 2 ":carol!cau@127.0.0.1 INVITE bob :#sala" "el invitado recibe la invitacion"
+	nocheck 1 "INVITE bob" "el resto del canal NO se entera de la invitacion"
+
+	# con +i la restriccion aparece, igual que +t en TOPIC
+	s1 "MODE #sala +i"
+	s3 "INVITE bob #sala"
+	check 3 "482 carol #sala" "con +i un no-operador ya no puede invitar -> 482"
+
+	# y la invitacion abre la puerta del 473
+	s1 "INVITE bob #sala"
+	check 1 "341 alice bob #sala" "el operador invita en un canal +i"
+	s2 "JOIN #sala"
+	check 2 "353 bob" "el invitado entra en un canal +i"
+	nocheck 2 "473" "y no recibe el 473"
+
+	# la invitacion es de un solo uso
+	s2 "PART #sala"
+	s2 "JOIN #sala"
+	check 2 "473 bob #sala" "la invitacion se consume: al volver ya no vale -> 473"
+
+	stop_server
+}
+
+# ============================================= 10. LO QUE FALTA (informativo)
 escenario_pendientes() {
-	title "9. PENDIENTE  (lo pide el subject y aun no esta)"
+	title "10. PENDIENTE  (lo pide el subject y aun no esta)"
 	start_server; open_clients 2
 
 	register 1 alice alu
@@ -434,9 +482,6 @@ escenario_pendientes() {
 	s2 "PART #sala"
 	s2 "JOIN #sala"
 	todo 2 "471" "canal +l lleno deberia rechazar -> 471  [falta en cmd_join.cpp]"
-
-	s1 "INVITE bob #sala"
-	todo 1 "341" "INVITE deberia confirmar -> 341  [falta cmdInvite en cmd_oper.cpp]"
 
 	s1 "COMANDOINVENTADO algo"
 	todo 1 "421" "comando desconocido deberia dar -> 421  [falta en dispatch()]"
@@ -466,6 +511,7 @@ escenario_kick
 escenario_mode
 escenario_quit
 escenario_robustez
+escenario_invite
 escenario_pendientes
 
 printf "\n${B}RESUMEN${N}\n"

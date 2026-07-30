@@ -36,6 +36,7 @@ Server::Server(int port, const std::string &password)
 	_handlers["KICK"] = &Server::cmdKick;
 	_handlers["MODE"] = &Server::cmdMode;
 	_handlers["CAP"] = &Server::cmdCap;
+	_handlers["INVITE"] = &Server::cmdInvite;
 }
 
 Server::~Server()
