@@ -52,6 +52,7 @@ open_clients() {           # $1 = cuantos clientes (1..3)
 		mkfifo "$DIR/in$i"
 		: > "$DIR/out$i"
 		timeout 30 nc localhost "$PORT" < "$DIR/in$i" > "$DIR/out$i" 2>/dev/null &
+		CLIENT_PID[$i]=$!
 		case $i in
 			1) exec 3> "$DIR/in1" ;;
 			2) exec 4> "$DIR/in2" ;;
@@ -65,6 +66,13 @@ s1() { printf '%s\r\n' "$1" >&3; sleep "${2:-0.15}"; }
 s2() { printf '%s\r\n' "$1" >&4; sleep "${2:-0.15}"; }
 s3() { printf '%s\r\n' "$1" >&5; sleep "${2:-0.15}"; }
 raw1() { printf '%s' "$1" >&3; sleep "${2:-0.2}"; }   # sin \r\n, para envios partidos
+
+# mata el nc del cliente $1 de golpe, sin QUIT: simula un Ctrl+C o un cable cortado.
+# CLIENT_PID guarda el pid del timeout, y el nc es su hijo
+kill_client() {
+	pkill -P "${CLIENT_PID[$1]}" 2>/dev/null
+	sleep 0.7
+}
 
 register() {               # $1 = fd (1|2|3), $2 = nick, $3 = user
 	local f=s$1
@@ -458,9 +466,45 @@ escenario_invite() {
 	stop_server
 }
 
-# ============================================= 10. LO QUE FALTA (informativo)
+# ================================================= 10. DESCONEXION ABRUPTA
+escenario_desconexion() {
+	title "10. DESCONEXION ABRUPTA  (sin QUIT)"
+	start_server; open_clients 3
+
+	register 1 alice alu
+	register 2 bob bou
+	register 3 carol cau
+	s1 "JOIN #uno"; s2 "JOIN #uno"; s3 "JOIN #uno"
+	s1 "JOIN #dos"; s2 "JOIN #dos"
+
+	# alice creo #uno y #dos, o sea es operadora de los dos
+	kill_client 1
+
+	check 2 ":alice!alu@127.0.0.1 QUIT :Connection closed" "un socket que muere avisa al canal"
+	check 3 ":alice!alu@127.0.0.1 QUIT :Connection closed" "y avisa a todos los del canal"
+
+	# bob comparte DOS canales con alice y aun asi solo debe recibirlo una vez
+	if [ "$(grep -c 'QUIT :Connection closed' "$DIR/out2")" -eq 1 ]; then
+		pass_t "quien comparte dos canales lo recibe una sola vez"
+	else
+		fail_t "quien comparte dos canales lo recibe una sola vez" "exactamente 1 linea QUIT"
+	fi
+
+	# el fd de alice ya no esta en members: al vaciar y recrear, bob se lleva la @
+	s2 "PART #dos"
+	s2 "JOIN #dos"
+	check 2 "353 bob = #dos :@bob" "el canal quedo vacio de verdad y se recreo"
+
+	# y tampoco quedo en operators del canal que sigue vivo
+	s2 "MODE #uno +t"
+	check 2 "482 bob #uno" "bob sigue sin ser operador de #uno"
+
+	stop_server
+}
+
+# ============================================= 11. LO QUE FALTA (informativo)
 escenario_pendientes() {
-	title "10. PENDIENTE  (lo pide el subject y aun no esta)"
+	title "11. PENDIENTE  (lo pide el subject y aun no esta)"
 	start_server; open_clients 2
 
 	register 1 alice alu
@@ -512,6 +556,7 @@ escenario_mode
 escenario_quit
 escenario_robustez
 escenario_invite
+escenario_desconexion
 escenario_pendientes
 
 printf "\n${B}RESUMEN${N}\n"

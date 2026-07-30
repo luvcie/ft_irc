@@ -32,7 +32,7 @@ private:
     void acceptClient();
     void recvFromClient(int fd);
     void flushClient(int fd);
-    void disconnect(int fd);
+    void disconnect(int fd, const std::string& reason = "Connection closed");
     void dispatch(Client& client, const Message& msg);
     void sendToClient(int fd, const std::string& msg);
     void sendToChannel(const std::string& channel, const std::string& msg, int except_fd);

@@ -201,9 +201,54 @@ void Server::flushClient(int fd)
 		client.send_buf.erase(0, n);
 }
 
-// TODO for Pablo: cierra el fd y borra el cliente de _clients
-void Server::disconnect(int fd)
+// a client leaving, whether they typed QUIT or their socket just died. both paths
+// come through here so the cleanup only has to exist once
+void Server::disconnect(int fd, const std::string &reason)
 {
+	std::map<int, Client>::iterator it = _clients.find(fd);
+	if (it == _clients.end())
+	{
+		close(fd);
+		return;
+	}
+	Client &client = it->second;
+
+	// tell everyone who shares a channel with them, but only once per person, so
+	// somebody in two of their channels doesn't get the same line twice
+	if (client.registered)
+	{
+		std::string line = clientPrefix(client) + " QUIT :" + reason + "\r\n";
+		std::set<int> told;
+		for (std::set<std::string>::iterator ch = client.channels.begin(); ch != client.channels.end(); ++ch)
+		{
+			std::map<std::string, Channel>::iterator chan_it = _channels.find(*ch);
+			if (chan_it == _channels.end())
+				continue;
+			std::set<int> &members = chan_it->second.members;
+			for (std::set<int>::iterator m = members.begin(); m != members.end(); ++m)
+			{
+				if (*m != fd && told.insert(*m).second)
+					sendToClient(*m, line);
+			}
+		}
+	}
+
+	// only now take them out, a second loop so nobody is removed before being told.
+	// leaving the fd behind matters more than it looks: fds get recycled, and the
+	// next client to connect could inherit an operator flag that was never theirs
+	for (std::set<std::string>::iterator ch = client.channels.begin(); ch != client.channels.end(); ++ch)
+	{
+		std::map<std::string, Channel>::iterator chan_it = _channels.find(*ch);
+		if (chan_it == _channels.end())
+			continue;
+		chan_it->second.members.erase(fd);
+		chan_it->second.operators.erase(fd);
+		chan_it->second.invited.erase(fd);
+		if (chan_it->second.members.empty())
+			_channels.erase(chan_it);
+	}
+
+	// last of all: erasing the client destroys the reference and its channel list
 	close(fd);
 	_clients.erase(fd);
 }
