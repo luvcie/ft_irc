@@ -135,7 +135,6 @@ void Server::run()
 	close(_listen_fd);
 }
 
-// TODO for Pablo: acepta la conexión, ponla en no bloqueante con fcntl y mete el Client en _clients
 void Server::acceptClient()
 {
 	sockaddr_in addr;
@@ -160,9 +159,6 @@ void Server::acceptClient()
 	_clients.insert(std::make_pair(fd, client));
 }
 
-// TODO for Pablo: un solo recv a un buffer local, 0 o menos significa que el cliente se ha ido (disconnect).
-// Si no, añade a recv_buf y ve sacando las líneas completas, valen tanto \r\n como \n a secas.
-// Una línea a medias se queda en recv_buf para la próxima. Cada línea completa va a dispatch(client, parse(line)).
 void Server::recvFromClient(int fd)
 {
 	char buf[512];
@@ -196,7 +192,6 @@ void Server::recvFromClient(int fd)
 		disconnect(fd, "Input line too long");
 }
 
-// TODO for Pablo: un send con lo que haya, y quita de send_buf solo lo que el kernel haya aceptado
 void Server::flushClient(int fd)
 {
 	std::map<int, Client>::iterator it = _clients.find(fd);
@@ -291,8 +286,6 @@ void Server::sendNumeric(Client &client, const std::string &code, const std::str
 	sendToClient(client.fd, ":" SERVER_NAME " " + code + " " + target + " " + params + "\r\n");
 }
 
-// TODO for Pablo: recorre los miembros del canal llamando a sendToClient para cada uno,
-// saltándote except_fd (el que envía)
 void Server::sendToChannel(const std::string &channel, const std::string &msg, int except_fd)
 {
 	std::map<std::string, Channel>::iterator it = _channels.find(channel);
