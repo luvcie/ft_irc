@@ -1,6 +1,7 @@
 #include <iostream>
 #include <cstdlib>
 #include <string>
+#include <exception>
 #include "Server.hpp"
 
 int main(int argc, char* argv[]) {
@@ -27,7 +28,14 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    Server server(port, password);
-    server.run();
+    // if the machine runs out of memory an allocation throws std::bad_alloc.
+    // catching it here exits cleanly instead of letting it crash the server
+    try {
+        Server server(port, password);
+        server.run();
+    } catch (const std::exception &e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+        return 1;
+    }
     return 0;
 }
