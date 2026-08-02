@@ -173,6 +173,14 @@ void Server::acceptClient()
 	// a failed accept is normal (a connection dropped before accept), so just skip it
 	if (fd < 0)
 		return;
+	// already too many clients. still accept it so it leaves the queue, then close
+	// it. no "you're full" message, a write without poll would break the one-poll rule
+	if (_clients.size() >= MAX_CLIENTS)
+	{
+		close(fd);
+		logStatus(logTag("!", CLR_RED) + " rejected a connection, server full");
+		return;
+	}
 	if (fcntl(fd, F_SETFL, O_NONBLOCK) < 0)
 	{
 		std::cerr << "Error: fcntl failed" << std::endl;

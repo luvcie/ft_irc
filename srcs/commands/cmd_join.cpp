@@ -31,9 +31,20 @@ void Server::cmdJoin(Client& client, const Message& msg) {
         sendNumeric(client, "403", name + " :No such channel");
         return;
     }
+    // cap how many channels one client can be in, but let them rejoin one they
+    // are already on, that path is a no-op below
+    if (!client.channels.count(name) && client.channels.size() >= MAX_CHANNELS_PER_USER) {
+        sendNumeric(client, "405", name + " :You have joined too many channels");
+        return;
+    }
 
     std::map<std::string, Channel>::iterator it = _channels.find(name);
     bool created = (it == _channels.end());
+    // refuse to create a brand new channel past the server-wide limit
+    if (created && _channels.size() >= MAX_CHANNELS) {
+        sendToClient(client.fd, ":" SERVER_NAME " NOTICE " + client.nick + " :Server channel limit reached\r\n");
+        return;
+    }
     if (created) {
         Channel fresh;
         fresh.name = name;
@@ -55,6 +66,12 @@ void Server::cmdJoin(Client& client, const Message& msg) {
     if (chan.user_limit > 0 && chan.members.size() >= chan.user_limit)
     {
         sendNumeric(client, "471", name + " :Cannot join channel (+l)");
+        return;
+    }
+    // a hard ceiling on channel size, on top of whatever +l an operator set
+    if (chan.members.size() >= MAX_CHANNEL_USERS)
+    {
+        sendNumeric(client, "471", name + " :Cannot join channel (channel is full)");
         return;
     }
     chan.members.insert(client.fd);
