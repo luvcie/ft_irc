@@ -9,7 +9,15 @@
 
 #define SERVER_NAME "ircserv"
 
+// pastel 256-color codes for the log tags
+#define CLR_GREEN  "151"
+#define CLR_RED    "210"
+#define CLR_CYAN   "159"
+#define CLR_PURPLE "183"
+#define CLR_BLUE   "117"
+
 std::string ircLower(const std::string& s);
+std::string logTag(const std::string& name, const char* color);
 
 class Server {
 public:
@@ -37,6 +45,7 @@ private:
     void sendToClient(int fd, const std::string& msg);
     void sendToChannel(const std::string& channel, const std::string& msg, int except_fd);
     void sendNumeric(Client& client, const std::string& code, const std::string& params);
+    void logStatus(const std::string& event);
     std::string clientPrefix(const Client& client);
 	Client* findClientByNick(const std::string& nick);
 

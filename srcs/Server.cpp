@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <iostream>
+#include <sstream>
 #include <cstring>
 #include <cstdlib>
 #include <csignal>
@@ -23,6 +24,24 @@ static const std::string::size_type MAX_PENDING_LINE = 4096;
 static void on_sigint(int)
 {
 	g_stop = 1;
+}
+
+// small int to string, C++98 has no std::to_string
+static std::string itostr(int n)
+{
+	std::ostringstream oss;
+	oss << n;
+	return oss.str();
+}
+
+// colors a log tag like [join], but only when stdout is a real terminal, so a
+// redirected log file stays plain text
+std::string logTag(const std::string &name, const char *color)
+{
+	static bool tty = isatty(STDOUT_FILENO);
+	if (!tty)
+		return "[" + name + "]";
+	return std::string("\033[38;5;") + color + "m[" + name + "]\033[0m";
 }
 
 Server::Server(int port, const std::string &password)
@@ -166,6 +185,7 @@ void Server::acceptClient()
 	Client client(fd);
 	client.host = ip;
 	_clients.insert(std::make_pair(fd, client));
+	logStatus(logTag("+", CLR_GREEN) + " connect    fd=" + itostr(fd) + " " + std::string(ip));
 }
 
 void Server::recvFromClient(int fd)
@@ -225,6 +245,8 @@ void Server::disconnect(int fd, const std::string &reason)
 		return;
 	}
 	Client &client = it->second;
+	// grab the nick now, the client reference is gone once it is erased below
+	std::string who = client.nick.empty() ? "-" : client.nick;
 
 	// tell everyone who shares a channel with them, but only once per person, so
 	// somebody in two of their channels doesn't get the same line twice
@@ -264,6 +286,7 @@ void Server::disconnect(int fd, const std::string &reason)
 	// last of all: erasing the client destroys the reference and its channel list
 	close(fd);
 	_clients.erase(fd);
+	logStatus(logTag("-", CLR_RED) + " disconnect fd=" + itostr(fd) + " " + who + " (" + reason + ")");
 }
 
 void Server::dispatch(Client &client, const Message &msg)
@@ -286,6 +309,18 @@ void Server::sendToClient(int fd, const std::string &msg)
 	std::map<int, Client>::iterator it = _clients.find(fd);
 	if (it != _clients.end())
 		it->second.send_buf += msg;
+}
+
+// one status line for the terminal, printed on every event that changes the
+// counts. the maps already hold everything, so this only counts and prints
+void Server::logStatus(const std::string &event)
+{
+	std::size_t registered = 0;
+	for (std::map<int, Client>::iterator it = _clients.begin(); it != _clients.end(); ++it)
+		if (it->second.registered)
+			++registered;
+	std::cout << event << " | " << _clients.size() << " clients, "
+			  << registered << " registered, " << _channels.size() << " channels" << std::endl;
 }
 
 void Server::sendNumeric(Client &client, const std::string &code, const std::string &params)

@@ -85,6 +85,7 @@ void Server::cmdJoin(Client& client, const Message& msg) {
     }
     sendNumeric(client, "353", "= " + name + " :" + names);
     sendNumeric(client, "366", name + " :End of /NAMES list");
+    logStatus(logTag("join", CLR_GREEN) + " " + client.nick + " " + name);
 }
 
 void Server::cmdPart(Client& client, const Message& msg) {
@@ -122,5 +123,6 @@ void Server::cmdPart(Client& client, const Message& msg) {
     // a channel with nobody left in it just disappears
     if (chan.members.empty())
         _channels.erase(it);
+    logStatus(logTag("part", CLR_RED) + " " + client.nick + " " + name);
 }
 

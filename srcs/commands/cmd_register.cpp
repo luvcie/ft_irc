@@ -99,6 +99,7 @@ void Server::cmdNick(Client& client, const Message& msg) {
                     sendToClient(*m, line);
             }
         }
+        logStatus(logTag("nick", CLR_PURPLE) + " " + client.nick + " is now " + nick);
     }
     client.nick = nick;
     tryRegister(client);
@@ -131,6 +132,7 @@ void Server::tryRegister(Client& client) {
     }
     client.registered = true;
     sendNumeric(client, "001", ":Welcome to the network, " + client.nick);
+    logStatus(logTag("*", CLR_CYAN) + " register   " + client.nick);
 }
 
 void Server::cmdPing(Client& client, const Message& msg) {

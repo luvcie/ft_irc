@@ -21,8 +21,18 @@ static bool parseLimit(const std::string &text, std::size_t &out)
   return true;
 }
 
-// puts a mode letter in the reply, writing the +/- only when the sign changes
-static void appendMode(std::string &modes, char &last_sign, bool adding, char letter)
+// adds a comma before the next phrase once the string already has one
+static void addPhrase(std::string &desc, const std::string &phrase)
+{
+  if (!desc.empty())
+    desc += ", ";
+  desc += phrase;
+}
+
+// writes the mode letter, the +/- only when the sign changes, and a plain-words
+// gloss for the log. param is the nick for o, the value for l, empty otherwise
+static void appendMode(std::string &modes, std::string &desc, char &last_sign,
+                       bool adding, char letter, const std::string &param)
 {
   char want = adding ? '+' : '-';
   if (want != last_sign)
@@ -31,6 +41,15 @@ static void appendMode(std::string &modes, char &last_sign, bool adding, char le
     last_sign = want;
   }
   modes += letter;
+
+  switch (letter)
+  {
+  case 'i': addPhrase(desc, adding ? "invite-only on" : "invite-only off"); break;
+  case 't': addPhrase(desc, adding ? "topic-lock on" : "topic-lock off"); break;
+  case 'k': addPhrase(desc, adding ? "key set" : "key removed"); break;
+  case 'l': addPhrase(desc, adding ? "limit " + param : std::string("limit removed")); break;
+  case 'o': addPhrase(desc, (adding ? "gave operator to " : "took operator from ") + param); break;
+  }
 }
 
 void Server::cmdMode(Client &client, const Message &msg)
@@ -109,6 +128,7 @@ void Server::cmdMode(Client &client, const Message &msg)
   size_t param_index = 2;
   std::string applied_modes = "";  // fills up grouped, like "+it-l"
   std::string applied_params = ""; // fills up as " victim" or " key" or " 10"
+  std::string applied_desc = "";   // plain-words gloss for the log, like "invite-only off"
   char last_sign = 0;              // the last +/- written, so signs only repeat when they change
 
   for (size_t i = 0; i < modestring.size(); ++i)
@@ -150,18 +170,18 @@ void Server::cmdMode(Client &client, const Message &msg)
       else
         chan.operators.erase(target->fd);
 
-      appendMode(applied_modes, last_sign, adding, 'o');
+      appendMode(applied_modes, applied_desc, last_sign, adding, 'o', nick);
       applied_params += " " + nick;
     }
     else if (c == 't')
     {
       chan.topic_locked = adding;
-      appendMode(applied_modes, last_sign, adding, 't');
+      appendMode(applied_modes, applied_desc, last_sign, adding, 't', "");
     }
     else if (c == 'i')
     {
       chan.invite_only = adding;
-      appendMode(applied_modes, last_sign, adding, 'i');
+      appendMode(applied_modes, applied_desc, last_sign, adding, 'i', "");
     }
     else if (c == 'k')
     {
@@ -177,13 +197,13 @@ void Server::cmdMode(Client &client, const Message &msg)
           continue;
 
         chan.key = key;
-        appendMode(applied_modes, last_sign, adding, 'k');
+        appendMode(applied_modes, applied_desc, last_sign, adding, 'k', "");
         applied_params += " " + key;
       }
       else
       {
         chan.key = "";
-        appendMode(applied_modes, last_sign, adding, 'k');
+        appendMode(applied_modes, applied_desc, last_sign, adding, 'k', "");
       }
     }
     else if (c == 'l')
@@ -201,13 +221,13 @@ void Server::cmdMode(Client &client, const Message &msg)
           continue; // "+l abc" and "+l -5" are ignored, never a crash
 
         chan.user_limit = limit;
-        appendMode(applied_modes, last_sign, adding, 'l');
+        appendMode(applied_modes, applied_desc, last_sign, adding, 'l', text);
         applied_params += " " + text;
       }
       else
       {
         chan.user_limit = 0; // 0 means no limit
-        appendMode(applied_modes, last_sign, adding, 'l');
+        appendMode(applied_modes, applied_desc, last_sign, adding, 'l', "");
       }
     }
     else
@@ -220,5 +240,6 @@ void Server::cmdMode(Client &client, const Message &msg)
     std::string line = clientPrefix(client) + " MODE " + name + " "
                        + applied_modes + applied_params + "\r\n";
     sendToChannel(name, line, -1);
+    logStatus(logTag("mode", CLR_BLUE) + " " + client.nick + " " + applied_modes + applied_params + " on " + name + " (" + applied_desc + ")");
   }
 }

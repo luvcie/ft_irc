@@ -94,12 +94,14 @@ void Server::cmdKick(Client &client, const Message &msg)
     	line += " :" + client.nick;
 	line += "\r\n";
 	sendToChannel(name, line, -1);
+	std::string kicked = target_client->nick;
 	chan.members.erase(target_client->fd);
 	chan.operators.erase(target_client->fd);
 	chan.invited.erase(target_client->fd);
 	target_client->channels.erase(name);
 	if (chan.members.empty())
 		_channels.erase(it);
+	logStatus(logTag("kick", CLR_RED) + " " + client.nick + " removed " + kicked + " from " + name);
 }
 
 void Server::cmdInvite(Client& client, const Message& msg)
