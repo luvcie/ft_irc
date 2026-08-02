@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # ============================================================================
 #  Bateria de tests para ft_irc  --  uso:  ./test_irc.sh [puerto]
 #
@@ -332,12 +332,12 @@ escenario_mode() {
 	check 1 "401 alice fantasma" "+o a un nick inexistente -> 401"
 
 	s1 "MODE #sala -ikl"
-	check 1 "MODE #sala -i-k-l" "quitar tres modos de golpe, sin consumir parametros"
+	check 1 "MODE #sala -ikl" "quitar tres modos de golpe, sin consumir parametros"
 	s1 "MODE #sala"
 	check 1 "324 alice #sala +" "tras quitarlos, la consulta vuelve a +"
 
 	s1 "MODE #sala +ot BOB"
-	check 2 "MODE #sala +o+t BOB" "+ot encadenado: el nick va a la o, en mayusculas (ircLower)"
+	check 2 "MODE #sala +ot BOB" "+ot encadenado: el nick va a la o, en mayusculas (ircLower)"
 	s2 "MODE #sala -t"
 	check 1 ":bob!bou@127.0.0.1 MODE #sala -t" "bob ya es operador y puede cambiar modos"
 
@@ -574,9 +574,9 @@ escenario_desconexion() {
 	stop_server
 }
 
-# ============================================= 12. LO QUE FALTA (informativo)
-escenario_pendientes() {
-	title "12. PENDIENTE  (lo pide el subject y aun no esta)"
+# ================================ 12. MODOS DE CANAL Y COMANDO DESCONOCIDO
+escenario_modos_extra() {
+	title "12. modos de canal, comando desconocido y case-insensitivity"
 	start_server; open_clients 2
 
 	register 1 alice alu
@@ -585,28 +585,28 @@ escenario_pendientes() {
 
 	s1 "MODE #sala +i"
 	s2 "JOIN #sala"
-	todo 2 "473" "canal +i deberia rechazar el JOIN -> 473  [falta en cmd_join.cpp]"
+	todo 2 "473" "canal +i rechaza el JOIN -> 473"
 
 	s1 "MODE #sala -i"
 	s1 "MODE #sala +k clave"
 	s2 "PART #sala"
 	s2 "JOIN #sala"
-	todo 2 "475" "canal +k deberia pedir la clave -> 475  [falta en cmd_join.cpp]"
+	todo 2 "475" "canal +k pide la clave -> 475"
 
 	s1 "MODE #sala -k"
 	s1 "MODE #sala +l 1"
 	s2 "PART #sala"
 	s2 "JOIN #sala"
-	todo 2 "471" "canal +l lleno deberia rechazar -> 471  [falta en cmd_join.cpp]"
+	todo 2 "471" "canal +l lleno rechaza -> 471"
 
 	s1 "COMANDOINVENTADO algo"
-	todo 1 "421" "comando desconocido deberia dar -> 421  [falta en dispatch()]"
+	todo 1 "421" "comando desconocido da -> 421"
 
-	# JOIN normaliza el nombre con ircLower, MODE todavia no: MODE #General no
+	# JOIN y MODE normalizan el nombre con ircLower, asi que MODE #General
 	# encuentra el canal que JOIN guardo como #general
 	s1 "JOIN #General"
 	s1 "MODE #General"
-	todo 1 "324 alice #general" "MODE deberia encontrar #General  [falta ircLower en cmd_mode.cpp]"
+	todo 1 "324 alice #general" "MODE encuentra #General sin importar la caja"
 
 	stop_server
 }
@@ -630,7 +630,7 @@ escenario_robustez
 escenario_invite
 escenario_cambio_nick
 escenario_desconexion
-escenario_pendientes
+escenario_modos_extra
 
 printf "\n${B}RESUMEN${N}\n"
 printf "  ${G}ok${N}       %d\n" "$OK"
