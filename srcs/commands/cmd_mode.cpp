@@ -68,10 +68,15 @@ void Server::cmdMode(Client &client, const Message &msg)
   // lowercase like every other channel command, so MODE #Test finds #test
   std::string name = ircLower(msg.params[0]);
 
-  // only channel modes are implemented, user modes are out of the subject
+  // only channel modes are implemented, user modes are out of the subject. but
+  // asking for your own modes is normal (irssi does it on connect), so answer
+  // that with an empty mode list instead of an error. anyone else still gets 502
   if (name.empty() || name[0] != '#')
   {
-    sendNumeric(client, "502", ":Cannot change mode for other users");
+    if (name == ircLower(client.nick))
+      sendNumeric(client, "221", "+");
+    else
+      sendNumeric(client, "502", ":Cannot change mode for other users");
     return;
   }
   std::map<std::string, Channel>::iterator it = _channels.find(name);
