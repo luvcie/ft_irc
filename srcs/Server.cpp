@@ -74,7 +74,9 @@ void Server::run()
 		// checking the port number, not errno, tells the two cases apart
 		if (_port < 1024)
 			std::cerr << "Error: bind failed, port " << _port
-					  << " needs root or is already in use" << std::endl;
+					  << " needs root or is already in use\n"
+					  << "Privileged ports: [1-1023]\n"
+					  << "Unprivileged ports: [1024-65535]" << std::endl;
 		else
 			std::cerr << "Error: bind failed (port already in use?)" << std::endl;
 		std::exit(1);
