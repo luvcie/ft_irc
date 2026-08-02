@@ -70,6 +70,7 @@ private:
 	void cmdMode(Client& client, const Message& msg);
 	void cmdCap(Client& client, const Message& msg);
 	void cmdInvite(Client& client, const Message& msg);
+	void cmdWho(Client& client, const Message& msg);
 };
 
 #endif

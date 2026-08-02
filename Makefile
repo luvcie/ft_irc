@@ -16,7 +16,8 @@ SRCS        = main.cpp \
               commands/cmd_join.cpp \
               commands/cmd_message.cpp \
               commands/cmd_oper.cpp \
-              commands/cmd_mode.cpp
+              commands/cmd_mode.cpp \
+              commands/cmd_who.cpp
 
 OBJS        = $(SRCS:%.cpp=$(OBJDIR)/%.o)
 DEPS        = $(SRCS:%.cpp=$(DEPDIR)/%.d)
