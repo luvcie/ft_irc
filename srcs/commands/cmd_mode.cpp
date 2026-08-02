@@ -21,6 +21,18 @@ static bool parseLimit(const std::string &text, std::size_t &out)
   return true;
 }
 
+// puts a mode letter in the reply, writing the +/- only when the sign changes
+static void appendMode(std::string &modes, char &last_sign, bool adding, char letter)
+{
+  char want = adding ? '+' : '-';
+  if (want != last_sign)
+  {
+    modes += want;
+    last_sign = want;
+  }
+  modes += letter;
+}
+
 void Server::cmdMode(Client &client, const Message &msg)
 {
   if (!client.registered)
@@ -95,8 +107,9 @@ void Server::cmdMode(Client &client, const Message &msg)
   const std::string &modestring = msg.params[1]; // "+ot" -> example
   bool adding = true;
   size_t param_index = 2;
-  std::string applied_modes = "";  // fills up as "+o-t"
+  std::string applied_modes = "";  // fills up grouped, like "+it-l"
   std::string applied_params = ""; // fills up as " victim" or " key" or " 10"
+  char last_sign = 0;              // the last +/- written, so signs only repeat when they change
 
   for (size_t i = 0; i < modestring.size(); ++i)
   {
@@ -137,21 +150,18 @@ void Server::cmdMode(Client &client, const Message &msg)
       else
         chan.operators.erase(target->fd);
 
-      applied_modes += (adding ? '+' : '-');
-      applied_modes += 'o';
+      appendMode(applied_modes, last_sign, adding, 'o');
       applied_params += " " + nick;
     }
     else if (c == 't')
     {
       chan.topic_locked = adding;
-      applied_modes += (adding ? '+' : '-');
-      applied_modes += 't';
+      appendMode(applied_modes, last_sign, adding, 't');
     }
     else if (c == 'i')
     {
       chan.invite_only = adding;
-      applied_modes += (adding ? '+' : '-');
-      applied_modes += 'i';
+      appendMode(applied_modes, last_sign, adding, 'i');
     }
     else if (c == 'k')
     {
@@ -167,13 +177,13 @@ void Server::cmdMode(Client &client, const Message &msg)
           continue;
 
         chan.key = key;
-        applied_modes += "+k";
+        appendMode(applied_modes, last_sign, adding, 'k');
         applied_params += " " + key;
       }
       else
       {
         chan.key = "";
-        applied_modes += "-k";
+        appendMode(applied_modes, last_sign, adding, 'k');
       }
     }
     else if (c == 'l')
@@ -191,13 +201,13 @@ void Server::cmdMode(Client &client, const Message &msg)
           continue; // "+l abc" and "+l -5" are ignored, never a crash
 
         chan.user_limit = limit;
-        applied_modes += "+l";
+        appendMode(applied_modes, last_sign, adding, 'l');
         applied_params += " " + text;
       }
       else
       {
         chan.user_limit = 0; // 0 means no limit
-        applied_modes += "-l";
+        appendMode(applied_modes, last_sign, adding, 'l');
       }
     }
     else
