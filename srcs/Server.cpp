@@ -95,6 +95,8 @@ void Server::run()
 	signal(SIGPIPE, SIG_IGN);
 	signal(SIGINT, on_sigint);
 
+	std::cout << "ircserv listening on port " << _port << std::endl;
+
 	while (!g_stop)
 	{
 		// rebuilt from scratch every tick, keeps it trivially in sync with _clients
@@ -137,6 +139,7 @@ void Server::run()
 		}
 	}
 
+	std::cout << "ircserv shutting down" << std::endl;
 	for (std::map<int, Client>::iterator it = _clients.begin(); it != _clients.end(); ++it)
 		close(it->first);
 	_clients.clear();
