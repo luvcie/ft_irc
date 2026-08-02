@@ -70,7 +70,13 @@ void Server::run()
 	addr.sin_port = htons(_port);
 	if (bind(_listen_fd, (sockaddr *)&addr, sizeof(addr)) < 0)
 	{
-		std::cerr << "Error: bind failed (port already in use?)" << std::endl;
+		// ports below 1024 are privileged: binding one without root fails here.
+		// checking the port number, not errno, tells the two cases apart
+		if (_port < 1024)
+			std::cerr << "Error: bind failed, port " << _port
+					  << " needs root or is already in use" << std::endl;
+		else
+			std::cerr << "Error: bind failed (port already in use?)" << std::endl;
 		std::exit(1);
 	}
 	if (listen(_listen_fd, SOMAXCONN) < 0)
