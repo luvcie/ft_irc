@@ -140,11 +140,9 @@ void Server::acceptClient()
 	sockaddr_in addr;
 	socklen_t addrlen = sizeof(addr);
 	int fd = accept(_listen_fd, (sockaddr *)&addr, &addrlen);
+	// a failed accept is normal (a connection dropped before accept), so just skip it
 	if (fd < 0)
-	{
-		std::cerr << "Error: accept failed" << std::endl;
 		return;
-	}
 	if (fcntl(fd, F_SETFL, O_NONBLOCK) < 0)
 	{
 		std::cerr << "Error: fcntl failed" << std::endl;
