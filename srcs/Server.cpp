@@ -139,7 +139,7 @@ void Server::run()
 		}
 	}
 
-	std::cout << "ircserv shutting down" << std::endl;
+	std::cout << "\nircserv shutting down" << std::endl;
 	for (std::map<int, Client>::iterator it = _clients.begin(); it != _clients.end(); ++it)
 		close(it->first);
 	_clients.clear();
