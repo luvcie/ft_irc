@@ -3,8 +3,8 @@
 #include <vector>
 #include <iostream>
 #include <sstream>
+#include <stdexcept>
 #include <cstring>
-#include <cstdlib>
 #include <csignal>
 #include <unistd.h>
 #include <fcntl.h>
@@ -64,24 +64,28 @@ Server::Server(int port, const std::string &password)
 	_handlers["WHO"] = &Server::cmdWho;
 }
 
+// whoever opens a descriptor closes it. this runs on a normal shutdown and also
+// when run() throws, because the stack unwinds through the catch in main. that is
+// what keeps a failed startup from leaking the listening socket
 Server::~Server()
 {
+	for (std::map<int, Client>::iterator it = _clients.begin(); it != _clients.end(); ++it)
+		close(it->first);
+	_clients.clear();
+	if (_listen_fd >= 0)
+		close(_listen_fd);
 }
 
 void Server::run()
 {
+	// every failure below throws instead of exiting: exit() would skip the destructor
+	// and leak both the listening socket and the maps. main catches and prints it
 	_listen_fd = socket(AF_INET, SOCK_STREAM, 0);
 	if (_listen_fd < 0)
-	{
-		std::cerr << "Error: socket failed" << std::endl;
-		std::exit(1);
-	}
+		throw std::runtime_error("socket failed");
 	int yes = 1;
 	if (setsockopt(_listen_fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) < 0)
-	{
-		std::cerr << "Error: setsockopt failed" << std::endl;
-		std::exit(1);
-	}
+		throw std::runtime_error("setsockopt failed");
 
 	sockaddr_in addr;
 	std::memset(&addr, 0, sizeof(addr));
@@ -93,24 +97,16 @@ void Server::run()
 		// ports below 1024 are privileged: binding one without root fails here.
 		// checking the port number, not errno, tells the two cases apart
 		if (_port < 1024)
-			std::cerr << "Error: bind failed, port " << _port
-					  << " needs root or is already in use\n"
-					  << "Privileged ports: [1-1023]\n"
-					  << "Unprivileged ports: [1024-65535]" << std::endl;
-		else
-			std::cerr << "Error: bind failed (port already in use?)" << std::endl;
-		std::exit(1);
+			throw std::runtime_error("bind failed, port " + itostr(_port)
+				+ " needs root or is already in use\n"
+				  "Privileged ports: [1-1023]\n"
+				  "Unprivileged ports: [1024-65535]");
+		throw std::runtime_error("bind failed (port already in use?)");
 	}
 	if (listen(_listen_fd, SOMAXCONN) < 0)
-	{
-		std::cerr << "Error: listen failed" << std::endl;
-		std::exit(1);
-	}
+		throw std::runtime_error("listen failed");
 	if (fcntl(_listen_fd, F_SETFL, O_NONBLOCK) < 0)
-	{
-		std::cerr << "Error: fcntl failed" << std::endl;
-		std::exit(1);
-	}
+		throw std::runtime_error("fcntl failed");
 
 	signal(SIGPIPE, SIG_IGN);
 	signal(SIGINT, on_sigint);
@@ -159,11 +155,8 @@ void Server::run()
 		}
 	}
 
+	// closing the sockets is the destructor's job, one owner and one close each
 	std::cout << "\nircserv shutting down" << std::endl;
-	for (std::map<int, Client>::iterator it = _clients.begin(); it != _clients.end(); ++it)
-		close(it->first);
-	_clients.clear();
-	close(_listen_fd);
 }
 
 void Server::acceptClient()
