@@ -122,6 +122,15 @@ void Server::cmdMode(Client &client, const Message &msg)
     return;
   }
 
+    // list modes are asked for, not set: irssi sends MODE #chan b right after joining
+  // to read the ban list. we keep no such list, so the answer is just the end marker.
+  // this goes before the operator check because reading a list is not privileged
+  if (msg.params[1] == "b")
+  {
+    sendNumeric(client, "368", name + " :End of channel ban list");
+    return;
+  }
+
   if (!chan.operators.count(client.fd))
   {
     sendNumeric(client, "482", name + " :You're not channel operator");
