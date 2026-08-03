@@ -108,8 +108,11 @@ void Server::run()
 	if (fcntl(_listen_fd, F_SETFL, O_NONBLOCK) < 0)
 		throw std::runtime_error("fcntl failed");
 
-	signal(SIGPIPE, SIG_IGN);
-	signal(SIGINT, on_sigint);
+	signal(SIGPIPE, SIG_IGN);       // ignore a client that disconnects while we are writing to it, the write will
+	                                // fail and we handle it in flushClient()
+	signal(SIGINT, on_sigint);     // Ctrl + C
+	signal(SIGTERM, on_sigint);    // kill <pid>
+	signal(SIGHUP, on_sigint);     // close the terminal, or kill -HUP <pid>
 
 	std::cout << "ircserv listening on port " << _port << std::endl;
 
