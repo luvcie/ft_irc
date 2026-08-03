@@ -4,6 +4,7 @@
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
+#include <ctime>
 #include <cstring>
 #include <csignal>
 #include <unistd.h>
@@ -136,7 +137,9 @@ void Server::run()
 			pfds.push_back(p);
 		}
 
-		if (poll(&pfds[0], pfds.size(), -1) < 0)
+		// a 1 second timeout so the loop wakes on its own to run the checks below,
+		// even when no socket has any activity
+		if (poll(&pfds[0], pfds.size(), 1000) < 0)
 			continue; // interrupted by a signal, the while condition decides
 
 		if (pfds[0].revents & POLLIN)
@@ -171,6 +174,20 @@ void Server::run()
 		}
 		for (size_t i = 0; i < over_sendq.size(); ++i)
 			disconnect(over_sendq[i], "Max SendQ exceeded");
+
+		// a socket that connects but never sends PASS/NICK/USER holds a client slot
+		// and never lets it go. without this, a script opening idle connections fills
+		// every slot and locks real users out. two passes, since disconnect() erases
+		// from _clients
+		time_t now = std::time(NULL);
+		std::vector<int> stale;
+		for (std::map<int, Client>::iterator it = _clients.begin(); it != _clients.end(); ++it)
+		{
+			if (!it->second.registered && now - it->second.connected_at >= REG_TIMEOUT)
+				stale.push_back(it->first);
+		}
+		for (size_t i = 0; i < stale.size(); ++i)
+			disconnect(stale[i], "Registration timeout");
 	}
 
 	// closing the sockets is the destructor's job, one owner and one close each

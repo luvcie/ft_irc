@@ -3,6 +3,7 @@
 
 #include <string>
 #include <set>
+#include <ctime>
 
 class Client {
 public:
@@ -14,6 +15,7 @@ public:
     std::string           host;
     bool                  has_pass;
     bool                  registered;
+    time_t                connected_at; // when the socket connected, for the registration timeout
     std::string           recv_buf;  // data arrives in chunks, lines get cut from here
     std::string           send_buf;  // replies queue here, the loop drains it when the socket is ready
     std::set<std::string> channels;

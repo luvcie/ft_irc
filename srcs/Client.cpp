@@ -1,5 +1,5 @@
 #include "Client.hpp"
 
 Client::Client(int fd)
-    : fd(fd), has_pass(false), registered(false)
+    : fd(fd), has_pass(false), registered(false), connected_at(std::time(NULL))
 {}
