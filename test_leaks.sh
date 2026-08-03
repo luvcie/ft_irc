@@ -2,8 +2,9 @@
 # ============================================================================
 #  Bateria de fugas para ft_irc  --  uso:  ./test_leaks.sh [puerto]
 #
-#  PARTE A  memoria y descriptores al salir, bajo valgrind
 #  PARTE B  descriptores en caliente, contando /proc/<pid>/fd entre tandas
+#  PARTE C  los caminos de arranque que fallan, bajo valgrind
+#  PARTE A  memoria y descriptores al salir tras un uso completo, bajo valgrind
 #
 #  La parte B es la que pilla un fd que se escapa durante la ejecucion aunque
 #  el cierre final lo tape: un servidor que filtra un fd por conexion aguanta
@@ -29,6 +30,8 @@ info()  { printf "  %s\n" "$1"; }
 ok()    { printf "  ${G}ok${N}    %s\n" "$1"; }
 bad()   { printf "  ${R}FUGA${N}  %s\n" "$1"; }
 warn()  { printf "  ${Y}aviso${N} %s\n" "$1"; }
+# cada caso que se ejercita, visible mientras corre
+step()  { printf "     ${Y}·${N} %s\n" "$1"; }
 
 # ------------------------------------------------------------ tandas de uso --
 # manda un guion de comandos y espera a que el servidor cierre (QUIT) o a que
@@ -37,10 +40,12 @@ session() {           # $1 = segundos de timeout, resto por stdin
 	timeout "$1" nc localhost "$PORT" > /dev/null 2>&1
 }
 
-# ejercita todos los caminos que crean o destruyen estado
+# ejercita todos los caminos que crean o destruyen estado. cada caso se anuncia
+# antes de correr, para que se vea por donde va y que se esta probando
 workout() {
 	local tag=$1
 
+	step "registro completo, JOIN, TOPIC, MODE +itkl, WHO, PART y QUIT limpio"
 	# --- registro completo, canal, modos, y salida limpia con QUIT
 	{ printf 'PASS %s\r\nNICK a_%s\r\nUSER au 0 * :A\r\n' "$PASSWORD" "$tag"
 	  printf 'JOIN #c_%s\r\nTOPIC #c_%s :hola\r\n' "$tag" "$tag"
@@ -51,6 +56,7 @@ workout() {
 	  sleep 0.4
 	} | session 3
 
+	step "dos clientes: INVITE en canal +i, PRIVMSG, NOTICE, KICK y canal que se vacia"
 	# --- dos clientes: kick, invite y canal que se queda vacio
 	{ printf 'PASS %s\r\nNICK b_%s\r\nUSER bu 0 * :B\r\nJOIN #k_%s\r\n' "$PASSWORD" "$tag" "$tag"
 	  sleep 0.8
@@ -71,23 +77,28 @@ workout() {
 	# plano y un wait sin argumentos se quedaria esperandolo para siempre
 	wait "$bg" 2>/dev/null
 
+	step "desconexion abrupta: registrado y dentro de un canal, socket cortado sin QUIT"
 	# --- desconexion abrupta: se registra, entra y le cortan el socket
 	{ printf 'PASS %s\r\nNICK d_%s\r\nUSER du 0 * :D\r\nJOIN #c_%s\r\n' "$PASSWORD" "$tag" "$tag"
 	  sleep 5
 	} | session 1
 
+	step "conexion que se va sin llegar a registrarse"
 	# --- conecta y se va sin registrarse siquiera
 	printf 'x' | session 1
 
+	step "password incorrecta: se queda a medias y el 464 lo echa"
 	# --- password incorrecta
 	{ printf 'PASS mala\r\nNICK e_%s\r\nUSER eu 0 * :E\r\n' "$tag"; sleep 0.3; } | session 2
 
+	step "entradas rotas: MODE :, canal inexistente, comando inventado, +l abc"
 	# --- comandos invalidos y entradas que rompen
 	{ printf 'PASS %s\r\nNICK f_%s\r\nUSER fu 0 * :F\r\n' "$PASSWORD" "$tag"
 	  printf 'MODE :\r\nMODE #nada\r\nINVENTADO x\r\nJOIN\r\nKICK\r\nMODE #c_%s +l abc\r\n' "$tag"
 	  printf 'QUIT\r\n'; sleep 0.3
 	} | session 2
 
+	step "inundacion de 8 KB sin un solo \\n: dispara el corte de MAX_PENDING_LINE"
 	# --- inundacion sin \n: dispara el corte por MAX_PENDING_LINE
 	{ printf 'PASS %s\r\nNICK g_%s\r\nUSER gu 0 * :G\r\n' "$PASSWORD" "$tag"
 	  sleep 0.2
@@ -114,9 +125,10 @@ parte_a() {
 		return 1
 	fi
 
-	workout va1
-	workout va2
+	printf "  ${B}tanda 1${N}\n"; workout va1
+	printf "  ${B}tanda 2${N}\n"; workout va2
 
+	info ""
 	info "cerrando con SIGINT..."
 	kill -INT "$SRV_PID" 2>/dev/null
 	for _ in $(seq 1 40); do
@@ -171,7 +183,8 @@ parte_b() {
 
 	local prev=$base
 	for round in 1 2 3; do
-		workout "fd$round" > /dev/null 2>&1
+		printf "  ${B}tanda %d${N}\n" "$round"
+		workout "fd$round"
 		sleep 1.2
 		local now
 		now=$(fdcount)
@@ -218,6 +231,51 @@ parte_b() {
 	SRV_PID=""
 }
 
+# ======================================== PARTE C: arranques que fallan
+# estos son los caminos donde run() lanza. antes usaban std::exit(), que no
+# desenrolla la pila: el destructor no corria y se escapaban el socket de
+# escucha y los nodos del mapa de handlers
+parte_c() {
+	title "PARTE C  --  arranques que fallan (valgrind)"
+
+	local occupier
+	./ircserv "$PORT" "$PASSWORD" > /dev/null 2>&1 &
+	occupier=$!
+	# sin disown, bash anuncia el "Killed" de este proceso mas tarde y ensucia
+	# la salida de la parte siguiente
+	disown "$occupier" 2>/dev/null
+	sleep 0.6
+
+	check_startup() {   # $1 = etiqueta, resto = argumentos de ircserv
+		local label=$1; shift
+		step "$label"
+		valgrind --leak-check=full --track-fds=yes --log-file="$DIR/c.log" \
+		         ./ircserv "$@" > /dev/null 2>&1
+		local heap fds errs
+		heap=$(grep -oP 'in use at exit: \K[0-9,]+ bytes in [0-9,]+ blocks' "$DIR/c.log")
+		fds=$(grep -oP 'FILE DESCRIPTORS: \K[0-9]+ open \([0-9]+ std\)' "$DIR/c.log")
+		errs=$(grep -oP 'ERROR SUMMARY: \K[0-9]+' "$DIR/c.log")
+		# un fd heredado del padre (VSCode filtra uno) no es culpa del servidor
+		local mine
+		mine=$(grep -c "by 0x.*Server::" "$DIR/c.log")
+		if [ "$heap" = "0 bytes in 0 blocks" ] && [ "$mine" -eq 0 ]; then
+			ok "$heap  ·  $fds  ·  $errs error(es)"
+		else
+			bad "$heap  ·  $fds  ·  $errs error(es)  <- mira /tmp/ft_irc_valgrind.log"
+			cp "$DIR/c.log" /tmp/ft_irc_valgrind.log 2>/dev/null
+		fi
+	}
+
+	check_startup "puerto ya ocupado"              "$PORT" "$PASSWORD"
+	check_startup "puerto privilegiado sin root"   "80"    "$PASSWORD"
+	check_startup "puerto no numerico"             "abc"   "$PASSWORD"
+	check_startup "puerto fuera de rango"          "99999" "$PASSWORD"
+	check_startup "password vacia"                 "$PORT" ""
+	check_startup "sin argumentos"
+
+	kill -9 "$occupier" 2>/dev/null
+}
+
 # ===================================================================== MAIN
 if [ ! -x ./ircserv ]; then
 	echo "${R}No existe ./ircserv. Lanza 'make' primero.${N}"
@@ -230,5 +288,6 @@ fi
 
 printf "${B}Bateria de fugas ft_irc${N}  (puerto %s)\n" "$PORT"
 parte_b
+parte_c
 parte_a
 printf "\n"
