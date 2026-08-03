@@ -298,10 +298,14 @@ void Server::disconnect(int fd, const std::string &reason)
 			continue;
 		chan_it->second.members.erase(fd);
 		chan_it->second.operators.erase(fd);
-		chan_it->second.invited.erase(fd);
 		if (chan_it->second.members.empty())
 			_channels.erase(chan_it);
 	}
+
+	// an invite can be in a channel they never joined, so the loop above misses it.
+	// clear the fd from every invite list too, or a recycled fd sneaks into a +i channel
+	for (std::map<std::string, Channel>::iterator c = _channels.begin(); c != _channels.end(); ++c)
+		c->second.invited.erase(fd);
 
 	// last of all: erasing the client destroys the reference and its channel list
 	close(fd);

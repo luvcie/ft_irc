@@ -544,6 +544,40 @@ escenario_invite() {
 	stop_server
 }
 
+# ================================== 9b. INVITE + FD RECICLADO  (bypass de +i)
+# un invitado que se va sin llegar a entrar dejaba su fd en la lista invited del
+# canal. el SO recicla ese fd a un cliente nuevo, que asi entraba a un +i sin
+# invitacion. el nuevo cliente se abre despues de matar al invitado a proposito,
+# para que herede su mismo fd en el servidor
+escenario_invite_reciclado() {
+	title "9b. INVITE + fd reciclado  (no colarse en un +i con el fd de otro)"
+	start_server; open_clients 2
+
+	register 1 op opu
+	register 2 invitado invu
+	s1 "JOIN #reinv"
+	s1 "MODE #reinv +i"
+	s1 "INVITE invitado #reinv"
+	check 2 "INVITE invitado :#reinv" "el invitado recibe la invitacion"
+
+	# se va sin entrar: libera su fd, que seguia colgado en la lista invited
+	kill_client 2
+
+	# cliente nuevo, hereda el fd del invitado (mismo orden de apertura)
+	mkfifo "$DIR/in3"; : > "$DIR/out3"
+	timeout 30 nc localhost "$PORT" < "$DIR/in3" > "$DIR/out3" 2>/dev/null &
+	CLIENT_PID[3]=$!
+	exec 5> "$DIR/in3"
+	sleep 0.25
+
+	register 3 intruso intu
+	s3 "JOIN #reinv"
+	check 3 "473 intruso #reinv" "el fd reciclado no entra al +i -> 473"
+	nocheck 3 "JOIN #reinv" "el intruso no llega a entrar en el canal"
+
+	stop_server
+}
+
 # ========================================================= 10. CAMBIO DE NICK
 escenario_cambio_nick() {
 	title "10. CAMBIO DE NICK  (estando ya registrado)"
@@ -685,6 +719,7 @@ escenario_quit
 escenario_robustez
 escenario_sendq
 escenario_invite
+escenario_invite_reciclado
 escenario_cambio_nick
 escenario_desconexion
 escenario_modos_extra
