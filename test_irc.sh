@@ -74,6 +74,12 @@ kill_client() {
 	sleep 0.7
 }
 
+# congela y descongela el nc del cliente $1: sigue conectado pero deja de leer, asi
+# que el kernel deja de vaciar su socket y la cola de salida del servidor se acumula
+freeze_client() { pkill -STOP -P "${CLIENT_PID[$1]}" 2>/dev/null; sleep 0.5; }
+thaw_client()   { pkill -CONT -P "${CLIENT_PID[$1]}" 2>/dev/null; sleep 0.5; }
+server_rss()    { awk '/VmRSS/{print $2}' /proc/"$SRV_PID"/status 2>/dev/null; }
+
 register() {               # $1 = fd (1|2|3), $2 = nick, $3 = user
 	local f=s$1
 	$f "PASS $PASSWORD"
@@ -444,6 +450,52 @@ escenario_robustez() {
 	stop_server
 }
 
+# ============================================== 8b. COLA DE SALIDA (SENDQ)
+escenario_sendq() {
+	title "8b. COLA DE SALIDA  (un cliente deja de leer)"
+	start_server; open_clients 2
+
+	register 1 victima vic
+	register 2 emisor emi
+	s1 "JOIN #sq"; s2 "JOIN #sq"
+
+	local antes despues crecimiento
+	antes=$(server_rss)
+
+	# la victima sigue conectada pero su proceso queda detenido: no lee nada
+	freeze_client 1
+
+	# ~20.000 mensajes de 400 B = unos 8 MB. primero se llena el buffer del kernel
+	# (unos 2,5 MB), y a partir de ahi todo se apila en el send_buf del servidor
+	local msg chunk
+	msg=$(head -c 400 < /dev/zero | tr '\0' 'y')
+	chunk=""
+	for _ in $(seq 1 50); do chunk="${chunk}PRIVMSG #sq :${msg}"$'\r\n'; done
+	for _ in $(seq 1 400); do printf '%s' "$chunk" >&4; done
+	sleep 4
+
+	despues=$(server_rss)
+	crecimiento=$((despues - antes))
+
+	if kill -0 "$SRV_PID" 2>/dev/null; then
+		pass_t "8 MB hacia un cliente congelado no tumban el servidor"
+	else
+		fail_t "8 MB hacia un cliente congelado no tumban el servidor" "proceso vivo"
+	fi
+
+	# sin el tope de MAX_SENDQ esto crecia varios MB y sin techo
+	if [ -n "$crecimiento" ] && [ "$crecimiento" -lt 2048 ]; then
+		pass_t "la memoria queda acotada (${antes} -> ${despues} kB, +${crecimiento} kB)"
+	else
+		fail_t "la memoria queda acotada" "menos de 2 MB de crecimiento (+${crecimiento} kB)"
+	fi
+
+	check 2 "QUIT :Max SendQ exceeded" "al que no lee se le echa, y el canal se entera"
+
+	thaw_client 1
+	stop_server
+}
+
 # =================================================================== 9. INVITE
 escenario_invite() {
 	title "9. INVITE"
@@ -631,6 +683,7 @@ escenario_kick
 escenario_mode
 escenario_quit
 escenario_robustez
+escenario_sendq
 escenario_invite
 escenario_cambio_nick
 escenario_desconexion

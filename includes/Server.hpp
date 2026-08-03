@@ -13,6 +13,7 @@
 #define MAX_CHANNELS          1024u
 #define MAX_CHANNELS_PER_USER 20u
 #define MAX_CHANNEL_USERS     256u
+#define MAX_SENDQ             1048576u
 
 // pastel 256-color codes for the log tags
 #define CLR_GREEN  "151"

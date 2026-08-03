@@ -156,6 +156,21 @@ void Server::run()
 			if ((pfds[i].revents & POLLOUT) && _clients.count(fd))
 				flushClient(fd);
 		}
+
+		// a client that stops reading makes send_buf grow with every broadcast, and
+		// nothing stops it. real servers call this the sendq and drop whoever goes
+		// over it: one frozen client must not take the server's memory with it.
+		// swept here and not in sendToClient, because that one runs inside loops over
+		// chan.members, and disconnecting there would invalidate the iterator.
+		// two passes for the same reason: disconnect() erases from _clients
+		std::vector<int> over_sendq;
+		for (std::map<int, Client>::iterator it = _clients.begin(); it != _clients.end(); ++it)
+		{
+			if (it->second.send_buf.size() > MAX_SENDQ)
+				over_sendq.push_back(it->first);
+		}
+		for (size_t i = 0; i < over_sendq.size(); ++i)
+			disconnect(over_sendq[i], "Max SendQ exceeded");
 	}
 
 	// closing the sockets is the destructor's job, one owner and one close each
