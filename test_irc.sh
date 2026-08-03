@@ -115,7 +115,7 @@ escenario_registro() {
 	s1 "USER u 0 * :U"
 	check 1 "464" "password incorrecta -> 464"
 
-	stop_server; start_server; open_clients 2
+	stop_server; start_server; open_clients 3
 
 	register 1 alice alu
 	check 1 ":ircserv 001 alice" "registro correcto -> 001 de bienvenida"
@@ -137,6 +137,14 @@ escenario_registro() {
 
 	s1 "PING token123"
 	check 1 "PONG" "PING -> PONG"
+
+	# PASS al final, despues de NICK y USER: la contrasena correcta debe registrar
+	# igual. antes se quedaba colgado porque solo NICK y USER llamaban a tryRegister
+	s3 "NICK carol"
+	s3 "USER cau 0 * :C"
+	check 3 "464" "NICK y USER antes de PASS -> 464 de momento"
+	s3 "PASS $PASSWORD"
+	check 3 ":ircserv 001 carol" "PASS al final con la clave correcta -> registra (001)"
 
 	stop_server
 }

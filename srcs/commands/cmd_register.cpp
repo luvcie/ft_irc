@@ -57,6 +57,9 @@ void Server::cmdPass(Client& client, const Message& msg) {
     }
     // registration checks this at the end, this line only records whether it matched
     client.has_pass = (msg.params[0] == _password);
+    // NICK and USER both try to register when done, so PASS should too. if PASS
+    // comes last the password would just sit here and the client stays stuck
+    tryRegister(client);
 }
 
 void Server::cmdNick(Client& client, const Message& msg) {
