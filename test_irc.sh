@@ -296,8 +296,12 @@ escenario_mode() {
 
 	s1 "MODE"
 	check 1 "461" "MODE sin parametros -> 461"
-	s1 "MODE alice +i"
-	check 1 "502" "MODE sobre un nick (no es canal) -> 502"
+	# un target que no es canal se parte en dos: tus propios modos se contestan
+	# con 221 (irssi lo pregunta al conectar), los de otra persona con 502
+	s1 "MODE alice"
+	check 1 "221 alice +" "consultar tus propios modos de usuario -> 221"
+	s1 "MODE bob +i"
+	check 1 "502" "tocar los modos de otro usuario -> 502"
 	s1 "MODE :"
 	check 1 "502" "MODE con parametro vacio -> 502, y el servidor sigue vivo"
 	s1 "MODE #nada"
