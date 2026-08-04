@@ -23,7 +23,7 @@
 // a frozen client accumulates whatever its channels say. big enough to survive a
 // flood, still capped so one dead client can't eat all the ram
 #define MAX_SENDQ             67108864u
-#define REG_TIMEOUT           60       // seconds to finish PASS/NICK/USER before the socket is dropped
+#define REG_TIMEOUT           300      // seconds to finish PASS/NICK/USER before the socket is dropped
 
 // pastel 256-color codes for the log tags
 #define CLR_GREEN  "151"
