@@ -9,7 +9,9 @@ static bool isValidChannelName(const std::string& name) {
         return false;
     for (size_t i = 1; i < name.size(); ++i) {
         char c = name[i];
-        if (c == ' ' || c == ',' || c == ':' || c == 7)
+        // reject NUL, BELL, CR and LF too (rfc 2811): the name ends up in JOIN and
+        // PRIVMSG lines, so a \r inside it would break other clients' parsing
+        if (c == ' ' || c == ',' || c == ':' || c == 7 || c == '\r' || c == '\n' || c == '\0')
             return false;
     }
     return true;

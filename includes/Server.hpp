@@ -8,6 +8,11 @@
 #include "Message.hpp"
 
 #define SERVER_NAME "ircserv"
+#define SERVER_VERSION "1.0"
+// 003 asks when the server was created, the build date is as good an answer as any
+#define SERVER_CREATED __DATE__ " " __TIME__
+// 004 advertises these, so keep them in step with what cmdMode actually accepts
+#define SERVER_CHANMODES "itkol"
 
 #define MAX_CLIENTS           1024u
 #define MAX_CHANNELS          1024u

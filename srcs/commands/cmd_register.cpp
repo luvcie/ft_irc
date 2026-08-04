@@ -118,7 +118,16 @@ void Server::cmdUser(Client& client, const Message& msg) {
         sendNumeric(client, "461", "USER :Not enough parameters");
         return;
     }
-    client.user = msg.params[0];
+    // the username goes into the nick!user@host prefix of every message, so a
+    // control character (a stray \r especially) would let it smuggle a line break
+    // into what other clients read. keep only the printable bytes
+    std::string uname;
+    for (size_t i = 0; i < msg.params[0].size(); ++i) {
+        unsigned char ch = (unsigned char)msg.params[0][i];
+        if (ch >= 32)
+            uname += (char)ch;
+    }
+    client.user = uname;
     tryRegister(client);
 }
 
@@ -134,7 +143,15 @@ void Server::tryRegister(Client& client) {
         return;
     }
     client.registered = true;
+    // irssi carries on as soon as 001 lands, but the rfc sends 001 to 004 and then the
+    // motd, and other clients sit and wait for all of it before they let you type
     sendNumeric(client, "001", ":Welcome to the network, " + client.nick);
+    sendNumeric(client, "002", ":Your host is " SERVER_NAME ", running version " SERVER_VERSION);
+    sendNumeric(client, "003", ":This server was created " SERVER_CREATED);
+    // 004 counts its parameters instead of naming them: server, version, user modes,
+    // channel modes. we have none of the first kind and the slot can't be left empty
+    sendNumeric(client, "004", SERVER_NAME " " SERVER_VERSION " * " SERVER_CHANMODES);
+    sendNumeric(client, "422", ":MOTD File is missing");
     logStatus(logTag("*", CLR_CYAN) + " register   " + client.nick);
 }
 

@@ -79,32 +79,50 @@ PRIVMSG #general :hello
 
 ## Commands
 
-| Command | Purpose |
-|---------|---------|
-| `PASS` | Send the connection password |
-| `NICK` | Set or change the nickname |
-| `USER` | Set the username, completes registration |
-| `PING` | Keepalive, the server answers with `PONG` |
-| `JOIN` | Join a channel |
-| `PART` | Leave a channel |
-| `PRIVMSG` | Send a message to a user or a channel |
-| `NOTICE` | Like `PRIVMSG`, but never triggers an automatic reply |
-| `QUIT` | Disconnect from the server |
-| `TOPIC` | Read or set a channel topic |
-| `KICK` | Remove a user from a channel (operator) |
-| `INVITE` | Invite a user to a channel (operator) |
-| `MODE` | Read or change channel modes (operator) |
-| `CAP` | Capability negotiation, kept minimal so clients connect cleanly |
+The third column is what you type into `nc`, exactly as written.
+
+| Command | Purpose | netcat |
+|---------|---------|--------|
+| `PASS` | Send the connection password | `PASS mypassword` |
+| `NICK` | Set or change the nickname | `NICK alice` |
+| `USER` | Set the username, completes registration | `USER alice 0 * :Alice Smith` |
+| `PING` | Keepalive, the server answers with `PONG` | `PING hello` |
+| `JOIN` | Join a channel | `JOIN #general`<br>`JOIN #general hunter2` (channel has a key) |
+| `PART` | Leave a channel | `PART #general`<br>`PART #general :bye everyone` |
+| `PRIVMSG` | Send a message to a user or a channel | `PRIVMSG #general :hello`<br>`PRIVMSG bob :hi there` |
+| `NOTICE` | Like `PRIVMSG`, but never triggers an automatic reply | `NOTICE #general :heads up` |
+| `QUIT` | Disconnect from the server | `QUIT`<br>`QUIT :see you` |
+| `TOPIC` | Read or set a channel topic | `TOPIC #general` (read)<br>`TOPIC #general :new topic` (set) |
+| `KICK` | Remove a user from a channel (operator) | `KICK #general bob`<br>`KICK #general bob :spamming` |
+| `INVITE` | Invite a user to a channel (operator) | `INVITE bob #general` |
+| `MODE` | Read or change channel modes (operator) | `MODE #general` (read)<br>`MODE #general +k hunter2` (set) |
+| `WHO` | List the members of a channel | `WHO #general` |
+| `CAP` | Capability negotiation, kept minimal so clients connect cleanly | `CAP LS` |
+
+Three things that trip people up typing these by hand:
+
+- The `:` marks the **last** parameter, and everything after it counts as one
+  piece even with spaces in it. `PRIVMSG #general hello there` only delivers
+  `hello`, while `PRIVMSG #general :hello there` delivers the whole sentence.
+- `INVITE` takes the nickname first and the channel second, which is the
+  opposite order from `KICK`.
+- One channel per `JOIN` or `PART`. Comma separated lists like `JOIN #a,#b`
+  are not supported, a comma is not a legal character in a channel name here.
 
 ## Channel modes
 
-| Mode | Meaning |
-|------|---------|
-| `i` | Invite only, only invited users can join |
-| `t` | Only operators can change the topic |
-| `k` | Channel key, a password needed to join |
-| `o` | Give or take operator privilege |
-| `l` | User limit, caps how many can be in the channel |
+| Mode | Meaning | netcat |
+|------|---------|--------|
+| `i` | Invite only, only invited users can join | `MODE #general +i`<br>`MODE #general -i` |
+| `t` | Only operators can change the topic | `MODE #general +t`<br>`MODE #general -t` |
+| `k` | Channel key, a password needed to join | `MODE #general +k hunter2`<br>`MODE #general -k` |
+| `o` | Give or take operator privilege | `MODE #general +o bob`<br>`MODE #general -o bob` |
+| `l` | User limit, caps how many can be in the channel | `MODE #general +l 10`<br>`MODE #general -l` |
+
+Several letters go in one command, and the parameters follow in the same order
+as the letters that need them: `MODE #general +itk hunter2` turns on invite
+only and the topic lock and sets the key in one go. Only `+k`, `+l` and both
+signs of `o` take a parameter.
 
 ## Resources
 
@@ -120,3 +138,6 @@ random questions, and an overall understanding of how servers work in an
 interactive conversation because chatbots are cool to talk to for learning
 about different subjects :). All project code was written and reviewed by the
 authors!
+
+update: Additionally after finishing the project we have made clanker tools try to
+find niche security bugs and other kind of bugs and some were found so that's great.
