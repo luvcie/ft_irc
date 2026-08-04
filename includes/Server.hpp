@@ -20,7 +20,9 @@
 #define MAX_CHANNELS          1024u
 #define MAX_CHANNELS_PER_USER 20u
 #define MAX_CHANNEL_USERS     256u
-#define MAX_SENDQ             1048576u
+// a frozen client accumulates whatever its channels say. big enough to survive a
+// flood, still capped so one dead client can't eat all the ram
+#define MAX_SENDQ             67108864u
 #define REG_TIMEOUT           60       // seconds to finish PASS/NICK/USER before the socket is dropped
 
 // pastel 256-color codes for the log tags
