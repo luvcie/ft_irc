@@ -66,6 +66,7 @@ private:
     void cmdUser(Client& client, const Message& msg);
     void cmdPing(Client& client, const Message& msg);
     void cmdJoin(Client& client, const Message& msg);
+    void joinChannel(Client& client, const std::string& name, const std::string& key);
     void cmdPart(Client& client, const Message& msg);
     void cmdPrivmsg(Client& client, const Message& msg);
     void cmdNotice(Client& client, const Message& msg);

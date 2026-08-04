@@ -1,7 +1,22 @@
 #include "Server.hpp"
+#include <vector>
 
 std::string Server::clientPrefix(const Client& client) {
     return ":" + client.nick + "!" + client.user + "@" + client.host;
+}
+
+// splits "#general,#off-topic" into one name each. empty pieces stay in, otherwise
+// the keys stop lining up with the channels they belong to
+static std::vector<std::string> splitCommas(const std::string& s) {
+    std::vector<std::string> out;
+    std::string::size_type start = 0;
+    for (;;) {
+        std::string::size_type pos = s.find(',', start);
+        out.push_back(s.substr(start, pos - start));
+        if (pos == std::string::npos)
+            return out;
+        start = pos + 1;
+    }
 }
 
 static bool isValidChannelName(const std::string& name) {
@@ -17,6 +32,9 @@ static bool isValidChannelName(const std::string& name) {
     return true;
 }
 
+// JOIN can take a whole list, like JOIN #general,#off-topic hunter2,secret. irssi
+// rejoins every channel in one command after a reconnect, so only reading the first
+// name would leave the user with nothing
 void Server::cmdJoin(Client& client, const Message& msg) {
     if (!client.registered) {
         sendNumeric(client, "451", ":You have not registered");
@@ -26,9 +44,18 @@ void Server::cmdJoin(Client& client, const Message& msg) {
         sendNumeric(client, "461", "JOIN :Not enough parameters");
         return;
     }
-    // channel names are case-insensitive too (same rfc rule as nicks), so lowercase the
-    // name and use that everywhere, that way #Test and #test end up as one channel
-    std::string name = ircLower(msg.params[0]);
+    std::vector<std::string> names = splitCommas(msg.params[0]);
+    std::vector<std::string> keys;
+    if (msg.params.size() > 1)
+        keys = splitCommas(msg.params[1]);
+    for (size_t i = 0; i < names.size(); ++i) {
+        // channel names are case-insensitive too (same rfc rule as nicks), so lowercase
+        // the name and use that everywhere, that way #Test and #test end up as one channel
+        joinChannel(client, ircLower(names[i]), i < keys.size() ? keys[i] : std::string());
+    }
+}
+
+void Server::joinChannel(Client& client, const std::string& name, const std::string& key) {
     if (!isValidChannelName(name)) {
         sendNumeric(client, "403", name + " :No such channel");
         return;
@@ -60,7 +87,7 @@ void Server::cmdJoin(Client& client, const Message& msg) {
         sendNumeric(client, "473", name + " :Cannot join channel (+i)");
         return;
     }
-    if (!chan.key.empty() && (msg.params.size() < 2 || msg.params[1] != chan.key))
+    if (!chan.key.empty() && key != chan.key)
     {
         sendNumeric(client, "475", name + " :Cannot join channel (+k)");
         return;

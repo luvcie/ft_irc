@@ -87,7 +87,7 @@ The third column is what you type into `nc`, exactly as written.
 | `NICK` | Set or change the nickname | `NICK alice` |
 | `USER` | Set the username, completes registration | `USER alice 0 * :Alice Smith` |
 | `PING` | Keepalive, the server answers with `PONG` | `PING hello` |
-| `JOIN` | Join a channel | `JOIN #general`<br>`JOIN #general hunter2` (channel has a key) |
+| `JOIN` | Join one or more channels | `JOIN #general`<br>`JOIN #general hunter2` (channel has a key)<br>`JOIN #general,#off-topic hunter2,secret` |
 | `PART` | Leave a channel | `PART #general`<br>`PART #general :bye everyone` |
 | `PRIVMSG` | Send a message to a user or a channel | `PRIVMSG #general :hello`<br>`PRIVMSG bob :hi there` |
 | `NOTICE` | Like `PRIVMSG`, but never triggers an automatic reply | `NOTICE #general :heads up` |
@@ -106,8 +106,10 @@ Three things that trip people up typing these by hand:
   `hello`, while `PRIVMSG #general :hello there` delivers the whole sentence.
 - `INVITE` takes the nickname first and the channel second, which is the
   opposite order from `KICK`.
-- One channel per `JOIN` or `PART`. Comma separated lists like `JOIN #a,#b`
-  are not supported, a comma is not a legal character in a channel name here.
+- `JOIN` takes a whole list at once, and the keys line up with it in the same order:
+  `JOIN #general,#off-topic hunter2,secret`. irssi rejoins every channel in one
+  `JOIN` after a reconnect, so this one is not optional. `PART` and `PRIVMSG` still
+  take a single channel or target.
 
 ## Channel modes
 
