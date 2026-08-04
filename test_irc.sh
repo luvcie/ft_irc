@@ -359,6 +359,17 @@ escenario_mode() {
 	s2 "MODE #sala -t"
 	check 1 ":bob!bou@127.0.0.1 MODE #sala -t" "bob ya es operador y puede cambiar modos"
 
+	# -k lleva la clave aunque no usemos su valor: hay que saltarla, o el siguiente
+	# modo la lee por error. en "-k+o clave nick" la o debe opear al nick, no a la clave
+	s1 "MODE #sala -o bob"           # bob deja de ser operador, para tener un objetivo limpio
+	: > "$DIR/out1"; : > "$DIR/out2"
+	s1 "MODE #sala +k llave"
+	s1 "MODE #sala -k+o llave bob"   # modos juntos: clave para -k, bob para +o
+	check 1 "MODE #sala -k+o bob" "'-k+o clave nick' opea al nick, no a la clave"
+	nocheck 1 "401" "no intenta opear a la clave (sin 401)"
+	s2 "MODE #sala +z"               # bob ya operador: un modo desconocido da 472, no 482
+	check 2 "472 bob z" "bob quedo operador de verdad (472 de modo desconocido, no 482)"
+
 	stop_server
 }
 

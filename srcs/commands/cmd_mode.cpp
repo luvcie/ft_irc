@@ -199,7 +199,6 @@ void Server::cmdMode(Client &client, const Message &msg)
     }
     else if (c == 'k')
     {
-      // only +k carries a parameter, -k just clears the key
       if (adding)
       {
         if (param_index >= msg.params.size())
@@ -216,6 +215,12 @@ void Server::cmdMode(Client &client, const Message &msg)
       }
       else
       {
+        // removing the key, the client still sends it even though we don't need
+        // the value. skip that word too, or the next mode reads it by mistake:
+        // "-k key +o nick" would try to op "key" instead of nick
+        if (param_index < msg.params.size())
+          param_index = param_index + 1;
+
         chan.key = "";
         appendMode(applied_modes, applied_desc, last_sign, adding, 'k', "");
       }
