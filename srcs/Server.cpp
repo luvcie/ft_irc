@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <ctime>
 #include <cstring>
+#include <cstdlib>
 #include <csignal>
 #include <unistd.h>
 #include <fcntl.h>
@@ -35,12 +36,12 @@ static std::string itostr(int n)
 	return oss.str();
 }
 
-// colors a log tag like [join], but only when stdout is a real terminal, so a
-// redirected log file stays plain text
+// colors a log tag like [join], but only if TERM says something is there to read them
 std::string logTag(const std::string &name, const char *color)
 {
-	static bool tty = isatty(STDOUT_FILENO);
-	if (!tty)
+	static const char *term = std::getenv("TERM");
+	static bool colored = (term != NULL && std::string(term) != "dumb");
+	if (!colored)
 		return "[" + name + "]";
 	return std::string("\033[38;5;") + color + "m[" + name + "]\033[0m";
 }
