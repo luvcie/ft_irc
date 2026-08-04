@@ -14,7 +14,9 @@
 // 004 advertises these, so keep them in step with what cmdMode actually accepts
 #define SERVER_CHANMODES "itkol"
 
-#define MAX_CLIENTS           1024u
+// keep this under the fd limit (1024 by default), otherwise accept() fails and poll
+// keeps waking us up for a connection we can never take
+#define MAX_CLIENTS           512u
 #define MAX_CHANNELS          1024u
 #define MAX_CHANNELS_PER_USER 20u
 #define MAX_CHANNEL_USERS     256u
